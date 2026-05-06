@@ -1,4 +1,4 @@
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
@@ -12,7 +12,7 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
@@ -33,12 +33,10 @@ export async function middleware(request: NextRequest) {
   const isAuthPage = path.startsWith("/login") || path.startsWith("/register");
   const isPublic = path === "/" || path.startsWith("/_next") || path.startsWith("/icons");
 
-  // Nicht eingeloggt + nicht auf Login-Seite → zu Login
   if (!user && !isAuthPage && !isPublic) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Eingeloggt + auf Login-Seite → zum Dashboard
   if (user && isAuthPage) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
