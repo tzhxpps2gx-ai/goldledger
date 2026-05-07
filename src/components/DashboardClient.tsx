@@ -11,10 +11,17 @@ import {
   calculateStats,
   buildEquityCurve,
   type Trade,
+  type Stats,
 } from "@/lib/calculations";
 import { formatCurrency, formatDateTime, pnlColor, cn } from "@/lib/utils";
 import EquityChart from "@/components/EquityChart";
-import { TrendingUp, TrendingDown, Target, Activity } from "lucide-react";
+import {
+  TrendingUp,
+  TrendingDown,
+  Target,
+  Activity,
+  ChevronDown,
+} from "lucide-react";
 
 const TABS: TimeRange[] = ["today", "week", "month", "year", "all"];
 
@@ -39,6 +46,7 @@ export default function DashboardClient({
   );
 
   const stats = useMemo(() => calculateStats(filtered), [filtered]);
+  const allTimeStats = useMemo(() => calculateStats(trades), [trades]);
   const equityCurve = useMemo(
     () => buildEquityCurve(filtered, Number(account.starting_balance)),
     [filtered, account.starting_balance]
@@ -47,7 +55,7 @@ export default function DashboardClient({
   const recentTrades = useMemo(() => trades.slice(0, 5), [trades]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
@@ -62,6 +70,9 @@ export default function DashboardClient({
           </p>
         </div>
       </div>
+
+      {/* All-Time Stats (Klapp-Leiste) */}
+      <AllTimeStatsBar stats={allTimeStats} currency={account.currency} />
 
       {/* Zeitraum-Tabs */}
       <div className="flex gap-1 p-1 bg-bg-card border border-bg-border rounded-xl overflow-x-auto scrollbar-hidden">
@@ -81,7 +92,7 @@ export default function DashboardClient({
         ))}
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards (Zeitraum-spezifisch) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard
           label="P/L"
@@ -95,7 +106,11 @@ export default function DashboardClient({
         <KpiCard
           label="Win Rate"
           value={`${stats.winRate}%`}
-          subtext={`${stats.winningTrades}/${stats.closedTrades}`}
+          subtext={
+            stats.closedTrades === 0
+              ? "Keine Trades"
+              : `${stats.winningTrades} von ${stats.closedTrades} ${stats.closedTrades === 1 ? "Trade" : "Trades"}`
+          }
           icon={Target}
         />
         <KpiCard
@@ -131,7 +146,7 @@ export default function DashboardClient({
         )}
       </div>
 
-      {/* Letzte Trades (immer alle, nicht gefiltert) */}
+      {/* Letzte Trades */}
       <div className="bg-bg-card border border-bg-border rounded-2xl overflow-hidden">
         <div className="p-5 md:p-6 border-b border-bg-border flex items-center justify-between">
           <h2 className="text-base font-semibold text-white">Letzte Trades</h2>
@@ -202,6 +217,205 @@ export default function DashboardClient({
   );
 }
 
+/* ===========================================================
+   AllTime Stats Bar — kompakt + ausklappbar
+   =========================================================== */
+function AllTimeStatsBar({
+  stats,
+  currency,
+}: {
+  stats: Stats;
+  currency: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (stats.totalTrades === 0) return null;
+
+  return (
+    <div className="bg-bg-card border border-bg-border rounded-2xl overflow-hidden transition-all">
+      {/* Compact Bar */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-3 md:gap-4 px-3 md:px-5 py-3 hover:bg-bg-elevated/30 transition"
+      >
+        <div className="text-[9px] md:text-[10px] font-semibold text-gold-400 uppercase tracking-wider whitespace-nowrap">
+          All Time
+        </div>
+
+        <div className="flex items-center gap-2.5 md:gap-4 flex-1 min-w-0">
+          <CompactStat
+            label="Win"
+            value={`${stats.winRate}%`}
+            accent={stats.winRate >= 50 ? "success" : stats.winRate > 0 ? "danger" : undefined}
+          />
+          <Divider />
+          <CompactStat
+            label="P/L"
+            value={
+              (stats.totalPnl >= 0 ? "+" : "") +
+              formatCurrencyCompact(stats.totalPnl, currency)
+            }
+            accent={stats.totalPnl >= 0 ? "success" : stats.totalPnl < 0 ? "danger" : undefined}
+          />
+          <Divider />
+          <CompactStat
+            label="Ø R"
+            value={stats.avgR.toFixed(2) + "R"}
+            accent={stats.avgR > 0 ? "success" : stats.avgR < 0 ? "danger" : undefined}
+          />
+          <Divider />
+          <CompactStat
+            label="Trades"
+            value={stats.totalTrades.toString()}
+          />
+        </div>
+
+        <ChevronDown
+          className={cn(
+            "w-4 h-4 text-zinc-500 transition-transform flex-shrink-0",
+            expanded && "rotate-180"
+          )}
+        />
+      </button>
+
+      {/* Expanded Details */}
+      {expanded && (
+        <div className="border-t border-bg-border p-4 md:p-5 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 animate-fade-in">
+          <DetailStat
+            label="Total Trades"
+            value={stats.totalTrades.toString()}
+            subtext={`${stats.closedTrades} geschlossen`}
+          />
+          <DetailStat
+            label="Win Rate"
+            value={`${stats.winRate}%`}
+            subtext={`${stats.winningTrades} W · ${stats.losingTrades} L`}
+            accent={stats.winRate >= 50 ? "success" : stats.winRate > 0 ? "danger" : undefined}
+          />
+          <DetailStat
+            label="Total P/L"
+            value={
+              (stats.totalPnl >= 0 ? "+" : "") +
+              formatCurrency(stats.totalPnl, currency)
+            }
+            accent={stats.totalPnl >= 0 ? "success" : stats.totalPnl < 0 ? "danger" : undefined}
+          />
+          <DetailStat
+            label="Profit Factor"
+            value={stats.profitFactor === 999 ? "∞" : stats.profitFactor.toFixed(2)}
+            accent={stats.profitFactor >= 1 ? "success" : stats.profitFactor > 0 ? "danger" : undefined}
+          />
+          <DetailStat
+            label="Ø R-Multiple"
+            value={stats.avgR.toFixed(2) + "R"}
+            accent={stats.avgR > 0 ? "success" : stats.avgR < 0 ? "danger" : undefined}
+          />
+          <DetailStat
+            label="Wins / Losses"
+            value={`${stats.winningTrades} / ${stats.losingTrades}`}
+          />
+          <DetailStat
+            label="Bester Trade"
+            value={
+              "+" + formatCurrency(stats.bestTrade, currency)
+            }
+            accent="success"
+          />
+          <DetailStat
+            label="Schlechtester Trade"
+            value={formatCurrency(stats.worstTrade, currency)}
+            accent={stats.worstTrade < 0 ? "danger" : undefined}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CompactStat({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string;
+  accent?: "success" | "danger";
+}) {
+  return (
+    <div className="flex flex-col min-w-0">
+      <div className="text-[8px] md:text-[9px] text-zinc-500 uppercase tracking-wider font-medium leading-tight">
+        {label}
+      </div>
+      <div
+        className={cn(
+          "text-xs md:text-sm font-bold tracking-tight leading-tight truncate",
+          accent === "success" && "text-success",
+          accent === "danger" && "text-danger",
+          !accent && "text-white"
+        )}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function Divider() {
+  return <div className="w-px h-7 bg-bg-border flex-shrink-0" />;
+}
+
+function DetailStat({
+  label,
+  value,
+  subtext,
+  accent,
+}: {
+  label: string;
+  value: string;
+  subtext?: string;
+  accent?: "success" | "danger";
+}) {
+  return (
+    <div>
+      <div className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium mb-1">
+        {label}
+      </div>
+      <div
+        className={cn(
+          "text-base md:text-lg font-bold tracking-tight",
+          accent === "success" && "text-success",
+          accent === "danger" && "text-danger",
+          !accent && "text-white"
+        )}
+      >
+        {value}
+      </div>
+      {subtext && (
+        <div className="text-[10px] text-zinc-500 mt-0.5">{subtext}</div>
+      )}
+    </div>
+  );
+}
+
+/* ===========================================================
+   Helper: kompakte Currency-Anzeige für die Stats-Bar
+   "+1.234,56 €" → "+1,2k €" für Werte > 1000
+   =========================================================== */
+function formatCurrencyCompact(value: number, currency: string): string {
+  const abs = Math.abs(value);
+  const symbol = currency === "EUR" ? "€" : currency === "USD" ? "$" : currency;
+  if (abs >= 10000) {
+    return `${(value / 1000).toFixed(1).replace(".", ",")}k ${symbol}`;
+  }
+  if (abs >= 1000) {
+    return `${(value / 1000).toFixed(2).replace(".", ",")}k ${symbol}`;
+  }
+  return `${value.toFixed(0)} ${symbol}`;
+}
+
+/* ===========================================================
+   Original KpiCard für die Tab-spezifischen KPIs
+   =========================================================== */
 function KpiCard({
   label,
   value,
