@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
-  calculateXauusdPnl,
+  calculateXauusdPnlEur,
   calculateRMultiple,
   calculatePlannedRR,
+  fetchEurUsdRate,
 } from "@/lib/calculations";
 import { cn } from "@/lib/utils";
 
@@ -72,8 +73,13 @@ export default function NewTradePage() {
     let pnl = null;
     let rMultiple = null;
     let pnlPercent = null;
+    let exchangeRate = 1.0;
+
     if (form.status === "closed" && actualEntry && actualExit) {
-      pnl = calculateXauusdPnl(actualEntry, actualExit, lotSize, form.direction);
+      // Wechselkurs holen für korrekten EUR-Betrag
+      exchangeRate = await fetchEurUsdRate();
+      pnl = calculateXauusdPnlEur(actualEntry, actualExit, lotSize, form.direction, exchangeRate);
+
       if (plannedStop) {
         rMultiple = calculateRMultiple(actualEntry, plannedStop, actualExit, form.direction);
       }
@@ -113,6 +119,7 @@ export default function NewTradePage() {
         pnl_currency: pnl,
         pnl_percent: pnlPercent,
         r_multiple: rMultiple,
+        exchange_rate: exchangeRate,
         status: form.status,
         notes: form.notes || null,
       })
@@ -125,7 +132,6 @@ export default function NewTradePage() {
       return;
     }
 
-    // Konto-Saldo aktualisieren bei geschlossenem Trade
     if (form.status === "closed" && pnl !== null && pnl !== 0) {
       const account = accounts.find((a) => a.id === form.account_id);
       if (account) {
@@ -152,11 +158,10 @@ export default function NewTradePage() {
         <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
           Neuer Trade
         </h1>
-        <p className="text-zinc-400 text-sm mt-1">XAUUSD · Vantage</p>
+        <p className="text-zinc-400 text-sm mt-1">XAUUSD · Vantage · in EUR</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Konto + Direction */}
         <div className="bg-bg-card border border-bg-border rounded-2xl p-5 space-y-4">
           {accounts.length > 1 && (
             <div>
@@ -206,7 +211,6 @@ export default function NewTradePage() {
           </div>
         </div>
 
-        {/* Pre-Trade Plan */}
         <div className="bg-bg-card border border-bg-border rounded-2xl p-5 space-y-4">
           <div>
             <h3 className="text-sm font-semibold text-gold-400 uppercase tracking-wider">
@@ -280,7 +284,6 @@ export default function NewTradePage() {
           </div>
         </div>
 
-        {/* Post-Trade */}
         <div className="bg-bg-card border border-bg-border rounded-2xl p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-gold-400 uppercase tracking-wider">
