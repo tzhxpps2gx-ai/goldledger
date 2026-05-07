@@ -21,6 +21,9 @@ import {
   Target,
   Activity,
   ChevronDown,
+  Hash,
+  Trophy,
+  Zap,
 } from "lucide-react";
 
 const TABS: TimeRange[] = ["today", "week", "month", "year", "all"];
@@ -55,7 +58,7 @@ export default function DashboardClient({
   const recentTrades = useMemo(() => trades.slice(0, 5), [trades]);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
@@ -71,7 +74,7 @@ export default function DashboardClient({
         </div>
       </div>
 
-      {/* All-Time Stats Card (klappbar) */}
+      {/* All-Time Performance — 4 Karten + ausklappbare Details */}
       <AllTimeStatsCard stats={allTimeStats} currency={account.currency} />
 
       {/* Zeitraum-Tabs */}
@@ -218,8 +221,7 @@ export default function DashboardClient({
 }
 
 /* ===========================================================
-   AllTime Stats Card — 2 Zeilen, Stats perfekt verteilt
-   Header oben (Label + Chevron), Stats unten in 4er-Grid
+   AllTime Stats Card — 4 schöne KPI-Karten + ausklappbare Details
    =========================================================== */
 function AllTimeStatsCard({
   stats,
@@ -233,107 +235,92 @@ function AllTimeStatsCard({
   if (stats.totalTrades === 0) return null;
 
   return (
-    <div className="bg-bg-card border border-bg-border rounded-2xl overflow-hidden">
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full text-left hover:bg-bg-elevated/20 transition group"
-      >
-        {/* HEADER: Label links, Chevron rechts */}
-        <div className="flex items-center justify-between px-4 md:px-5 pt-3 pb-2">
-          <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-gold-400" />
-            <span className="text-[10px] md:text-[11px] text-gold-400 uppercase tracking-[0.15em] font-semibold">
-              All Time Performance
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-zinc-500 hidden md:block">
-              {expanded ? "Schließen" : "Mehr anzeigen"}
-            </span>
-            <ChevronDown
-              className={cn(
-                "w-4 h-4 text-zinc-500 transition-transform",
-                expanded && "rotate-180"
-              )}
-            />
-          </div>
+    <div className="space-y-3">
+      {/* Header-Zeile mit "All Time" Label und Klapp-Button */}
+      <div className="flex items-center justify-between px-1">
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-gold-400 shadow-[0_0_8px_rgba(212,175,55,0.5)]" />
+          <span className="text-[10px] md:text-[11px] text-gold-400 uppercase tracking-[0.15em] font-semibold">
+            All Time Performance
+          </span>
         </div>
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-300 transition text-[10px] md:text-[11px] font-medium uppercase tracking-wider"
+        >
+          <span className="hidden md:inline">
+            {expanded ? "Schließen" : "Mehr Details"}
+          </span>
+          <ChevronDown
+            className={cn(
+              "w-4 h-4 transition-transform duration-200",
+              expanded && "rotate-180"
+            )}
+          />
+        </button>
+      </div>
 
-        {/* STATS-GRID: 4 gleichgroße Spalten mit Trennlinien */}
-        <div className="grid grid-cols-4 border-t border-bg-border/50">
-          <StatCell
-            label="Win Rate"
-            value={`${stats.winRate}%`}
-            accent={stats.winRate >= 50 ? "success" : stats.winRate > 0 ? "danger" : undefined}
-            divider
-          />
-          <StatCell
-            label="P/L"
-            value={
-              (stats.totalPnl >= 0 ? "+" : "") +
-              formatCurrencyCompact(stats.totalPnl, currency)
-            }
-            accent={stats.totalPnl >= 0 ? "success" : stats.totalPnl < 0 ? "danger" : undefined}
-            divider
-          />
-          <StatCell
-            label="Ø R-Multiple"
-            value={stats.avgR.toFixed(2) + "R"}
-            accent={stats.avgR > 0 ? "success" : stats.avgR < 0 ? "danger" : undefined}
-            divider
-          />
-          <StatCell
-            label="Trades"
-            value={stats.totalTrades.toString()}
-          />
-        </div>
-      </button>
+      {/* 4 große KPI-Karten — selbe Optik wie die Tab-KPIs unten */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KpiCard
+          label="Win Rate"
+          value={`${stats.winRate}%`}
+          subtext={
+            stats.closedTrades > 0
+              ? `${stats.winningTrades} von ${stats.closedTrades} ${stats.closedTrades === 1 ? "Trade" : "Trades"}`
+              : undefined
+          }
+          accent={stats.winRate >= 50 ? "success" : stats.winRate > 0 ? "danger" : undefined}
+          icon={Target}
+        />
+        <KpiCard
+          label="P/L"
+          value={
+            (stats.totalPnl >= 0 ? "+" : "") +
+            formatCurrency(stats.totalPnl, currency)
+          }
+          accent={stats.totalPnl >= 0 ? "success" : stats.totalPnl < 0 ? "danger" : undefined}
+          icon={stats.totalPnl >= 0 ? TrendingUp : TrendingDown}
+        />
+        <KpiCard
+          label="Ø R-Multiple"
+          value={stats.avgR.toFixed(2) + "R"}
+          accent={stats.avgR > 0 ? "success" : stats.avgR < 0 ? "danger" : undefined}
+          icon={Activity}
+        />
+        <KpiCard
+          label="Trades"
+          value={stats.totalTrades.toString()}
+          subtext={`${stats.closedTrades} geschlossen`}
+          icon={Hash}
+        />
+      </div>
 
-      {/* AUFGEKLAPPT: Detail-Stats */}
+      {/* Aufgeklappt: Detail-KPIs in eigener Card */}
       {expanded && (
-        <div className="border-t border-bg-border bg-bg-elevated/30 p-4 md:p-5 grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in">
-          <DetailStat
-            label="Total Trades"
-            value={stats.totalTrades.toString()}
-            subtext={`${stats.closedTrades} geschlossen`}
-          />
-          <DetailStat
-            label="Wins / Losses"
-            value={`${stats.winningTrades} / ${stats.losingTrades}`}
-          />
+        <div className="bg-bg-card border border-bg-border rounded-2xl p-4 md:p-5 grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in">
           <DetailStat
             label="Profit Factor"
             value={stats.profitFactor === 999 ? "∞" : stats.profitFactor.toFixed(2)}
             accent={stats.profitFactor >= 1 ? "success" : stats.profitFactor > 0 ? "danger" : undefined}
+            icon={Zap}
           />
           <DetailStat
-            label="Total P/L (genau)"
-            value={
-              (stats.totalPnl >= 0 ? "+" : "") +
-              formatCurrency(stats.totalPnl, currency)
-            }
-            accent={stats.totalPnl >= 0 ? "success" : stats.totalPnl < 0 ? "danger" : undefined}
+            label="Wins / Losses"
+            value={`${stats.winningTrades} / ${stats.losingTrades}`}
+            icon={Target}
           />
           <DetailStat
             label="Bester Trade"
             value={"+" + formatCurrency(stats.bestTrade, currency)}
             accent="success"
+            icon={Trophy}
           />
           <DetailStat
             label="Schlechtester Trade"
             value={formatCurrency(stats.worstTrade, currency)}
             accent={stats.worstTrade < 0 ? "danger" : undefined}
-          />
-          <DetailStat
-            label="Win Rate"
-            value={`${stats.winRate}%`}
-            subtext={`${stats.winningTrades} W · ${stats.losingTrades} L`}
-            accent={stats.winRate >= 50 ? "success" : stats.winRate > 0 ? "danger" : undefined}
-          />
-          <DetailStat
-            label="Ø R-Multiple"
-            value={stats.avgR.toFixed(2) + "R"}
-            accent={stats.avgR > 0 ? "success" : stats.avgR < 0 ? "danger" : undefined}
+            icon={TrendingDown}
           />
         </div>
       )}
@@ -341,92 +328,9 @@ function AllTimeStatsCard({
   );
 }
 
-function StatCell({
-  label,
-  value,
-  accent,
-  divider,
-}: {
-  label: string;
-  value: string;
-  accent?: "success" | "danger";
-  divider?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex flex-col items-center justify-center text-center px-2 py-3 md:py-4",
-        divider && "border-r border-bg-border/50"
-      )}
-    >
-      <div className="text-[9px] md:text-[10px] text-zinc-500 uppercase tracking-wider font-medium mb-1">
-        {label}
-      </div>
-      <div
-        className={cn(
-          "text-sm md:text-lg font-bold tracking-tight truncate w-full",
-          accent === "success" && "text-success",
-          accent === "danger" && "text-danger",
-          !accent && "text-white"
-        )}
-      >
-        {value}
-      </div>
-    </div>
-  );
-}
-
-function DetailStat({
-  label,
-  value,
-  subtext,
-  accent,
-}: {
-  label: string;
-  value: string;
-  subtext?: string;
-  accent?: "success" | "danger";
-}) {
-  return (
-    <div>
-      <div className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium mb-1">
-        {label}
-      </div>
-      <div
-        className={cn(
-          "text-base md:text-lg font-bold tracking-tight",
-          accent === "success" && "text-success",
-          accent === "danger" && "text-danger",
-          !accent && "text-white"
-        )}
-      >
-        {value}
-      </div>
-      {subtext && (
-        <div className="text-[10px] text-zinc-500 mt-0.5">{subtext}</div>
-      )}
-    </div>
-  );
-}
-
 /* ===========================================================
-   Helper: kompakte Currency-Anzeige für die Stats-Bar
-   "+1.234,56 €" → "+1,2k €" für Werte > 1000
-   =========================================================== */
-function formatCurrencyCompact(value: number, currency: string): string {
-  const abs = Math.abs(value);
-  const symbol = currency === "EUR" ? "€" : currency === "USD" ? "$" : currency;
-  if (abs >= 10000) {
-    return `${(value / 1000).toFixed(1).replace(".", ",")}k ${symbol}`;
-  }
-  if (abs >= 1000) {
-    return `${(value / 1000).toFixed(2).replace(".", ",")}k ${symbol}`;
-  }
-  return `${value.toFixed(0)} ${symbol}`;
-}
-
-/* ===========================================================
-   Tab-spezifische KpiCards
+   KpiCard — die schönen großen Karten
+   Wird sowohl für All-Time als auch Tab-KPIs verwendet
    =========================================================== */
 function KpiCard({
   label,
@@ -472,6 +376,58 @@ function KpiCard({
       </div>
       {subtext && (
         <div className="text-[11px] text-zinc-500 mt-1">{subtext}</div>
+      )}
+    </div>
+  );
+}
+
+/* ===========================================================
+   DetailStat — kleinere Boxen für ausgeklappte Detail-Werte
+   =========================================================== */
+function DetailStat({
+  label,
+  value,
+  subtext,
+  accent,
+  icon: Icon,
+}: {
+  label: string;
+  value: string;
+  subtext?: string;
+  accent?: "success" | "danger";
+  icon?: React.ComponentType<{ className?: string }>;
+}) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium">
+          {label}
+        </div>
+        {Icon && (
+          <Icon
+            className={cn(
+              "w-3 h-3",
+              accent === "success"
+                ? "text-success"
+                : accent === "danger"
+                ? "text-danger"
+                : "text-zinc-600"
+            )}
+          />
+        )}
+      </div>
+      <div
+        className={cn(
+          "text-base md:text-lg font-bold tracking-tight",
+          accent === "success" && "text-success",
+          accent === "danger" && "text-danger",
+          !accent && "text-white"
+        )}
+      >
+        {value}
+      </div>
+      {subtext && (
+        <div className="text-[10px] text-zinc-500 mt-0.5">{subtext}</div>
       )}
     </div>
   );
