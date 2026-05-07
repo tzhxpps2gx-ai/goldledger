@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency, formatDateTime, pnlColor, cn } from "@/lib/utils";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
 import DeleteTradeButton from "@/components/DeleteTradeButton";
 
 export const dynamic = "force-dynamic";
@@ -40,10 +40,23 @@ export default async function TradeDetailPage({
           <ArrowLeft className="w-4 h-4" />
           Zurück
         </Link>
-        <DeleteTradeButton tradeId={trade.id} pnl={trade.pnl_currency} accountId={trade.account_id} accountBalance={Number(account.current_balance)} />
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/trades/${trade.id}/edit`}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gold-500/10 border border-gold-500/30 hover:bg-gold-500/20 text-gold-400 text-xs font-medium rounded-lg transition"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+            Bearbeiten
+          </Link>
+          <DeleteTradeButton
+            tradeId={trade.id}
+            pnl={trade.pnl_currency}
+            accountId={trade.account_id}
+            accountBalance={Number(account.current_balance)}
+          />
+        </div>
       </div>
 
-      {/* Hero */}
       <div className="bg-bg-card border border-bg-border rounded-2xl p-5 md:p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
@@ -88,7 +101,6 @@ export default async function TradeDetailPage({
         </div>
       </div>
 
-      {/* Pre-Plan */}
       {(trade.setup || trade.reasoning || trade.planned_stop || trade.planned_target) && (
         <div className="bg-bg-card border border-bg-border rounded-2xl p-5 md:p-6 space-y-4">
           <h3 className="text-xs font-semibold text-gold-400 uppercase tracking-wider">
@@ -97,15 +109,9 @@ export default async function TradeDetailPage({
           {trade.setup && <Field label="Setup" value={trade.setup} />}
           {trade.reasoning && <Field label="Begründung" value={trade.reasoning} />}
           <div className="grid grid-cols-3 gap-3">
-            {trade.planned_entry && (
-              <Field label="Entry geplant" value={trade.planned_entry.toString()} />
-            )}
-            {trade.planned_stop && (
-              <Field label="Stop" value={trade.planned_stop.toString()} />
-            )}
-            {trade.planned_target && (
-              <Field label="Target" value={trade.planned_target.toString()} />
-            )}
+            {trade.planned_entry && <Field label="Entry geplant" value={trade.planned_entry.toString()} />}
+            {trade.planned_stop && <Field label="Stop" value={trade.planned_stop.toString()} />}
+            {trade.planned_target && <Field label="Target" value={trade.planned_target.toString()} />}
           </div>
           {trade.planned_rr != null && (
             <Field label="Geplantes R:R" value={`1 : ${trade.planned_rr}`} />
@@ -113,27 +119,17 @@ export default async function TradeDetailPage({
         </div>
       )}
 
-      {/* Zeiten */}
       {(trade.entry_time || trade.exit_time) && (
         <div className="bg-bg-card border border-bg-border rounded-2xl p-5 md:p-6 space-y-3">
-          <h3 className="text-xs font-semibold text-gold-400 uppercase tracking-wider">
-            Zeiten
-          </h3>
-          {trade.entry_time && (
-            <Field label="Entry" value={formatDateTime(trade.entry_time)} />
-          )}
-          {trade.exit_time && (
-            <Field label="Exit" value={formatDateTime(trade.exit_time)} />
-          )}
+          <h3 className="text-xs font-semibold text-gold-400 uppercase tracking-wider">Zeiten</h3>
+          {trade.entry_time && <Field label="Entry" value={formatDateTime(trade.entry_time)} />}
+          {trade.exit_time && <Field label="Exit" value={formatDateTime(trade.exit_time)} />}
         </div>
       )}
 
-      {/* Notizen */}
       {trade.notes && (
         <div className="bg-bg-card border border-bg-border rounded-2xl p-5 md:p-6">
-          <h3 className="text-xs font-semibold text-gold-400 uppercase tracking-wider mb-2">
-            Notizen
-          </h3>
+          <h3 className="text-xs font-semibold text-gold-400 uppercase tracking-wider mb-2">Notizen</h3>
           <p className="text-sm text-zinc-300 whitespace-pre-wrap">{trade.notes}</p>
         </div>
       )}
