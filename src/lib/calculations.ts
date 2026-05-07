@@ -1,8 +1,38 @@
 // XAUUSD-spezifische Berechnungen
 // 1 Lot Gold = 100 Unzen
-// 1 Punkt Bewegung bei 1.00 Lot = $100 P/L
+// 1$ Preis-Bewegung bei 1.00 Lot = $100 P/L
+// Bei EUR-Konto: USD-P/L wird in EUR umgerechnet via Wechselkurs
 
-export function calculateXauusdPnl(
+const FALLBACK_EUR_USD = 0.92; // wenn API down
+
+/**
+ * Holt den aktuellen EUR/USD-Wechselkurs.
+ * Nutzt exchangerate.host (kostenlos, kein API-Key nötig).
+ * Bei API-Fehler → Fallback-Kurs.
+ */
+export async function fetchEurUsdRate(): Promise<number> {
+  try {
+    const res = await fetch(
+      "https://api.exchangerate.host/latest?base=USD&symbols=EUR",
+      { cache: "no-store" }
+    );
+    if (!res.ok) throw new Error("API not OK");
+    const data = await res.json();
+    const rate = data?.rates?.EUR;
+    if (typeof rate === "number" && rate > 0 && rate < 2) {
+      return rate;
+    }
+    throw new Error("Invalid rate");
+  } catch {
+    return FALLBACK_EUR_USD;
+  }
+}
+
+/**
+ * Berechnet P/L in USD für einen XAUUSD-Trade.
+ * Formel: (Exit - Entry) × Lots × 100 für Long, umgekehrt für Short.
+ */
+export function calculateXauusdPnlUsd(
   entry: number,
   exit: number,
   lotSize: number,
@@ -10,6 +40,33 @@ export function calculateXauusdPnl(
 ): number {
   const points = direction === "long" ? exit - entry : entry - exit;
   return points * lotSize * 100;
+}
+
+/**
+ * Berechnet P/L direkt in EUR — nutzt USD-P/L × EUR/USD-Rate.
+ */
+export function calculateXauusdPnlEur(
+  entry: number,
+  exit: number,
+  lotSize: number,
+  direction: "long" | "short",
+  eurUsdRate: number
+): number {
+  const usdPnl = calculateXauusdPnlUsd(entry, exit, lotSize, direction);
+  return Number((usdPnl * eurUsdRate).toFixed(2));
+}
+
+/**
+ * Behält den alten Namen für Rückwärtskompatibilität — rechnet in EUR.
+ */
+export function calculateXauusdPnl(
+  entry: number,
+  exit: number,
+  lotSize: number,
+  direction: "long" | "short",
+  eurUsdRate: number = FALLBACK_EUR_USD
+): number {
+  return calculateXauusdPnlEur(entry, exit, lotSize, direction, eurUsdRate);
 }
 
 export function calculateRMultiple(
@@ -46,6 +103,7 @@ export type Trade = {
   status: string;
   entry_time: string | null;
   exit_time: string | null;
+  exchange_rate?: number | null;
 };
 
 export type Stats = {
