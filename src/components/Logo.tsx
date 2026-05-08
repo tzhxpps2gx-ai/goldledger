@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
  * 4 = Diagonal-Chart mit Goldpunkt — abstrakt, Trader-feeling
  * 5 = Aurum-Symbol — alchemistisch (Kreis mit Punkt), premium
  */
-const ACTIVE_VARIANT: 1 | 2 | 3 | 4 | 5 = 2;
+const ACTIVE_VARIANT: 1 | 2 | 3 | 4 | 5 = 4;
 
 export type LogoSize = "sm" | "md" | "lg" | "xl";
 
