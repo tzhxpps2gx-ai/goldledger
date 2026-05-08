@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import Logo from "@/components/Logo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -33,21 +34,24 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bg p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-bg p-4 overflow-hidden relative">
+      {/* Subtle Background Glow */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-gold-500/5 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="w-full max-w-md relative animate-fade-in">
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-gold-400 to-gold-600 mb-4 shadow-lg shadow-gold-500/20">
-            <span className="text-2xl font-bold text-bg">G</span>
+          <div className="inline-block mb-4 animate-slide-up">
+            <Logo size="xl" />
           </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">
+          <h1 className="text-3xl font-bold text-white tracking-tight animate-slide-up">
             GoldLedger
           </h1>
-          <p className="text-zinc-400 text-sm mt-2">
+          <p className="text-zinc-400 text-sm mt-2 animate-slide-up">
             Dein persönliches Trading-Journal
           </p>
         </div>
 
-        <div className="bg-bg-card border border-bg-border rounded-2xl p-8 shadow-xl">
+        <div className="bg-bg-card border border-bg-border rounded-2xl p-8 shadow-2xl backdrop-blur-sm animate-slide-up">
           <h2 className="text-xl font-semibold text-white mb-6">Anmelden</h2>
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -60,7 +64,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-bg-elevated border border-bg-border rounded-xl text-white placeholder:text-zinc-500 focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500 transition"
+                className="w-full px-4 py-3 bg-bg-elevated border border-bg-border rounded-xl text-white placeholder:text-zinc-500 focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500 transition-all"
                 placeholder="trader@example.com"
               />
             </div>
@@ -74,13 +78,13 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-bg-elevated border border-bg-border rounded-xl text-white placeholder:text-zinc-500 focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500 transition"
+                className="w-full px-4 py-3 bg-bg-elevated border border-bg-border rounded-xl text-white placeholder:text-zinc-500 focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500 transition-all"
                 placeholder="••••••••"
               />
             </div>
 
             {error && (
-              <div className="text-sm text-danger bg-danger/10 border border-danger/30 rounded-lg px-3 py-2">
+              <div className="text-sm text-danger bg-danger/10 border border-danger/30 rounded-lg px-3 py-2 animate-fade-in">
                 {error}
               </div>
             )}
@@ -88,7 +92,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-bg font-semibold rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-gold-500/20"
+              className="w-full py-3 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-bg font-semibold rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-gold-500/20 hover:shadow-gold-500/40 hover:-translate-y-0.5 active:translate-y-0"
             >
               {loading ? "Anmelden..." : "Anmelden"}
             </button>
@@ -98,7 +102,7 @@ export default function LoginPage() {
             Noch kein Account?{" "}
             <Link
               href="/register"
-              className="text-gold-400 hover:text-gold-300 font-medium transition"
+              className="text-gold-400 hover:text-gold-300 font-medium transition-colors"
             >
               Registrieren
             </Link>
