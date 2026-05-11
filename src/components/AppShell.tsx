@@ -29,11 +29,10 @@ const desktopNav = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-// Mobile Bottom-Nav: schlank, nur Top-Aktionen
+// Mobile Bottom-Nav: nur Dashboard + Neuer Trade
 const mobileBottomNav = [
-  { href: "/dashboard", label: "Home", icon: LayoutDashboard },
-  { href: "/trades/new", label: "Neu", icon: Plus, primary: true },
-  { href: "/trades", label: "Trades", icon: List },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/trades/new", label: "Neuer Trade", icon: Plus, primary: true },
 ];
 
 export default function AppShell({
@@ -48,12 +47,10 @@ export default function AppShell({
   const supabase = createClient();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // Drawer schließen bei Routenwechsel
   useEffect(() => {
     setDrawerOpen(false);
   }, [pathname]);
 
-  // Body-Scroll deaktivieren wenn Drawer offen
   useEffect(() => {
     document.body.style.overflow = drawerOpen ? "hidden" : "";
     return () => {
@@ -69,9 +66,7 @@ export default function AppShell({
 
   return (
     <div className="min-h-screen bg-bg">
-      {/* ============================================================
-          DESKTOP SIDEBAR (immer sichtbar ab md)
-          ============================================================ */}
+      {/* DESKTOP SIDEBAR */}
       <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 bg-bg-elevated border-r border-bg-border z-30">
         <SidebarBranding />
         <SidebarNav pathname={pathname} />
@@ -81,9 +76,7 @@ export default function AppShell({
         />
       </aside>
 
-      {/* ============================================================
-          MOBILE DRAWER (animiert von links eingeblendet)
-          ============================================================ */}
+      {/* MOBILE DRAWER */}
       <div
         onClick={() => setDrawerOpen(false)}
         className={cn(
@@ -115,9 +108,7 @@ export default function AppShell({
         />
       </aside>
 
-      {/* ============================================================
-          MAIN CONTENT
-          ============================================================ */}
+      {/* MAIN CONTENT */}
       <main className="md:ml-64 pb-24 md:pb-0 min-h-screen">
         {/* MOBILE TOP BAR */}
         <header className="md:hidden sticky top-0 z-20 bg-bg-elevated/80 backdrop-blur-xl border-b border-bg-border safe-area-top">
@@ -144,11 +135,9 @@ export default function AppShell({
         </div>
       </main>
 
-      {/* ============================================================
-          MOBILE BOTTOM NAV (schlank: nur Top-3)
-          ============================================================ */}
+      {/* MOBILE BOTTOM NAV — schlank, nur 2 Buttons */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-bg-elevated/95 backdrop-blur-xl border-t border-bg-border safe-area-bottom">
-        <div className="flex items-end justify-around px-2 pt-2 pb-2">
+        <div className="flex items-center justify-around px-4 pt-3 pb-3 gap-4">
           {mobileBottomNav.map((item) => {
             const active =
               pathname === item.href ||
@@ -159,14 +148,14 @@ export default function AppShell({
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="flex flex-col items-center -mt-7 group"
+                  className="flex-1 group active:scale-95 transition-transform"
                 >
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-xl shadow-gold-500/40 ring-4 ring-bg transition-all duration-200 group-active:scale-90 group-hover:shadow-gold-500/60">
-                    <Icon className="w-6 h-6 text-bg" strokeWidth={2.5} />
+                  <div className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-gradient-to-r from-gold-500 to-gold-600 shadow-lg shadow-gold-500/30 group-hover:shadow-gold-500/50 transition-all">
+                    <Icon className="w-5 h-5 text-bg" strokeWidth={2.5} />
+                    <span className="text-sm font-semibold text-bg">
+                      {item.label}
+                    </span>
                   </div>
-                  <span className="text-[10px] text-zinc-400 mt-1.5 font-medium">
-                    {item.label}
-                  </span>
                 </Link>
               );
             }
@@ -175,12 +164,20 @@ export default function AppShell({
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex flex-col items-center gap-1 py-1 px-6 rounded-lg transition-all duration-200 min-w-[80px] active:scale-95",
-                  active ? "text-gold-400" : "text-zinc-500 hover:text-zinc-300"
+                  "flex-1 active:scale-95 transition-transform"
                 )}
               >
-                <Icon className="w-5 h-5" />
-                <span className="text-[10px] font-medium">{item.label}</span>
+                <div
+                  className={cn(
+                    "flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border transition-all",
+                    active
+                      ? "bg-gold-500/10 border-gold-500/30 text-gold-400"
+                      : "bg-bg-card border-bg-border text-zinc-300 hover:text-white"
+                  )}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="text-sm font-medium">{item.label}</span>
+                </div>
               </Link>
             );
           })}
@@ -190,9 +187,7 @@ export default function AppShell({
   );
 }
 
-/* ============================================================
-   Sidebar-Bauteile
-   ============================================================ */
+/* Sidebar-Bauteile */
 
 function SidebarBranding({ compact }: { compact?: boolean }) {
   return (
