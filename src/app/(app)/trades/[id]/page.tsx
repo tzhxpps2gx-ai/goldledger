@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatCurrency, formatDateTime, pnlColor, cn } from "@/lib/utils";
 import { ArrowLeft, Pencil } from "lucide-react";
 import DeleteTradeButton from "@/components/DeleteTradeButton";
+import TradeChart from "@/components/TradeChart";
 
 export const dynamic = "force-dynamic";
 
@@ -31,19 +32,20 @@ export default async function TradeDetailPage({
   if (!account) redirect("/dashboard");
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
+      {/* Top Bar */}
       <div className="flex items-center justify-between">
         <Link
           href="/trades"
-          className="inline-flex items-center gap-2 text-zinc-400 hover:text-white text-sm transition"
+          className="inline-flex items-center gap-2 text-zinc-400 hover:text-white text-sm transition group"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
           Zurück
         </Link>
         <div className="flex items-center gap-2">
           <Link
             href={`/trades/${trade.id}/edit`}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gold-500/10 border border-gold-500/30 hover:bg-gold-500/20 text-gold-400 text-xs font-medium rounded-lg transition"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gold-500/10 border border-gold-500/30 hover:bg-gold-500/20 text-gold-400 text-xs font-medium rounded-lg transition active:scale-95"
           >
             <Pencil className="w-3.5 h-3.5" />
             Bearbeiten
@@ -57,6 +59,7 @@ export default async function TradeDetailPage({
         </div>
       </div>
 
+      {/* Hero Card */}
       <div className="bg-bg-card border border-bg-border rounded-2xl p-5 md:p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
@@ -101,35 +104,55 @@ export default async function TradeDetailPage({
         </div>
       </div>
 
-      {(trade.setup || trade.reasoning || trade.planned_stop || trade.planned_target) && (
+      {/* Trade-Visualisierung (NEU) */}
+      <TradeChart
+        direction={trade.direction}
+        plannedEntry={trade.planned_entry}
+        plannedStop={trade.planned_stop}
+        plannedTarget={trade.planned_target}
+        actualEntry={trade.actual_entry}
+        actualExit={trade.actual_exit}
+        pnlCurrency={trade.pnl_currency}
+        rMultiple={trade.r_multiple}
+        lotSize={trade.lot_size}
+        currency={account.currency}
+      />
+
+      {/* Pre-Trade Plan */}
+      {(trade.setup || trade.reasoning) && (
         <div className="bg-bg-card border border-bg-border rounded-2xl p-5 md:p-6 space-y-4">
           <h3 className="text-xs font-semibold text-gold-400 uppercase tracking-wider">
             Pre-Trade Plan
           </h3>
           {trade.setup && <Field label="Setup" value={trade.setup} />}
           {trade.reasoning && <Field label="Begründung" value={trade.reasoning} />}
-          <div className="grid grid-cols-3 gap-3">
-            {trade.planned_entry && <Field label="Entry geplant" value={trade.planned_entry.toString()} />}
-            {trade.planned_stop && <Field label="Stop" value={trade.planned_stop.toString()} />}
-            {trade.planned_target && <Field label="Target" value={trade.planned_target.toString()} />}
-          </div>
           {trade.planned_rr != null && (
             <Field label="Geplantes R:R" value={`1 : ${trade.planned_rr}`} />
           )}
         </div>
       )}
 
+      {/* Zeiten */}
       {(trade.entry_time || trade.exit_time) && (
         <div className="bg-bg-card border border-bg-border rounded-2xl p-5 md:p-6 space-y-3">
-          <h3 className="text-xs font-semibold text-gold-400 uppercase tracking-wider">Zeiten</h3>
-          {trade.entry_time && <Field label="Entry" value={formatDateTime(trade.entry_time)} />}
-          {trade.exit_time && <Field label="Exit" value={formatDateTime(trade.exit_time)} />}
+          <h3 className="text-xs font-semibold text-gold-400 uppercase tracking-wider">
+            Zeiten
+          </h3>
+          {trade.entry_time && (
+            <Field label="Entry" value={formatDateTime(trade.entry_time)} />
+          )}
+          {trade.exit_time && (
+            <Field label="Exit" value={formatDateTime(trade.exit_time)} />
+          )}
         </div>
       )}
 
+      {/* Notizen */}
       {trade.notes && (
         <div className="bg-bg-card border border-bg-border rounded-2xl p-5 md:p-6">
-          <h3 className="text-xs font-semibold text-gold-400 uppercase tracking-wider mb-2">Notizen</h3>
+          <h3 className="text-xs font-semibold text-gold-400 uppercase tracking-wider mb-2">
+            Notizen
+          </h3>
           <p className="text-sm text-zinc-300 whitespace-pre-wrap">{trade.notes}</p>
         </div>
       )}
