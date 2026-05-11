@@ -29,12 +29,11 @@ const desktopNav = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
+// Mobile Bottom-Nav: schlank, nur Top-Aktionen
 const mobileBottomNav = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard },
-  { href: "/calendar", label: "Kalender", icon: Calendar },
   { href: "/trades/new", label: "Neu", icon: Plus, primary: true },
   { href: "/trades", label: "Trades", icon: List },
-  { href: "/analytics", label: "Analyse", icon: BarChart3 },
 ];
 
 export default function AppShell({
@@ -85,7 +84,6 @@ export default function AppShell({
       {/* ============================================================
           MOBILE DRAWER (animiert von links eingeblendet)
           ============================================================ */}
-      {/* Backdrop */}
       <div
         onClick={() => setDrawerOpen(false)}
         className={cn(
@@ -94,7 +92,6 @@ export default function AppShell({
         )}
       />
 
-      {/* Drawer Sidebar */}
       <aside
         className={cn(
           "md:hidden fixed inset-y-0 left-0 w-72 bg-bg-elevated border-r border-bg-border z-50 flex flex-col transition-transform duration-300 ease-out",
@@ -105,7 +102,7 @@ export default function AppShell({
           <SidebarBranding compact />
           <button
             onClick={() => setDrawerOpen(false)}
-            className="text-zinc-400 hover:text-white p-2 rounded-lg hover:bg-bg-card transition"
+            className="text-zinc-400 hover:text-white p-2 rounded-lg hover:bg-bg-card transition active:scale-95"
             aria-label="Menü schließen"
           >
             <X className="w-5 h-5" />
@@ -138,7 +135,6 @@ export default function AppShell({
                 GoldLedger
               </span>
             </div>
-            {/* Spacer rechts für Symmetrie */}
             <div className="w-9" />
           </div>
         </header>
@@ -149,7 +145,7 @@ export default function AppShell({
       </main>
 
       {/* ============================================================
-          MOBILE BOTTOM NAV
+          MOBILE BOTTOM NAV (schlank: nur Top-3)
           ============================================================ */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-bg-elevated/95 backdrop-blur-xl border-t border-bg-border safe-area-bottom">
         <div className="flex items-end justify-around px-2 pt-2 pb-2">
@@ -179,7 +175,7 @@ export default function AppShell({
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex flex-col items-center gap-1 py-1 px-3 rounded-lg transition-all duration-200 min-w-[60px] active:scale-95",
+                  "flex flex-col items-center gap-1 py-1 px-6 rounded-lg transition-all duration-200 min-w-[80px] active:scale-95",
                   active ? "text-gold-400" : "text-zinc-500 hover:text-zinc-300"
                 )}
               >
@@ -195,7 +191,7 @@ export default function AppShell({
 }
 
 /* ============================================================
-   Sidebar-Bauteile — geteilt zwischen Desktop & Mobile
+   Sidebar-Bauteile
    ============================================================ */
 
 function SidebarBranding({ compact }: { compact?: boolean }) {
