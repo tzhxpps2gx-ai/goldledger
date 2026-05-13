@@ -104,7 +104,7 @@ export default async function TradeDetailPage({
         </div>
       </div>
 
-      {/* Trade-Visualisierung (NEU) */}
+      {/* Trade-Visualisierung */}
       <TradeChart
         direction={trade.direction}
         plannedEntry={trade.planned_entry}
