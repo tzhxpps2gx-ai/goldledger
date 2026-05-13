@@ -30,60 +30,70 @@ export default function TradeChart({
 }: TradeChartProps) {
   const data = useMemo(() => {
     const entry = actualEntry ?? plannedEntry;
-    if (!entry || !plannedStop || !plannedTarget) return null;
+    if (!entry) return null;
 
     const isLong = direction === "long";
 
-    // Bei Long: TP oben, SL unten. Bei Short: umgekehrt
-    const top = isLong ? plannedTarget : plannedStop;
-    const bottom = isLong ? plannedStop : plannedTarget;
-    const range = top - bottom;
-    if (range <= 0) return null;
+    // Alle vorhandenen Preise sammeln
+    const prices: number[] = [entry];
+    if (plannedStop != null) prices.push(plannedStop);
+    if (plannedTarget != null) prices.push(plannedTarget);
+    if (actualExit != null) prices.push(actualExit);
 
-    // Position der Elemente in % (0 = unten, 100 = oben)
-    const yPercent = (price: number) => ((price - bottom) / range) * 100;
+    // Wenn nur Entry → künstliche Range
+    if (prices.length === 1) {
+      const padding = Math.max(entry * 0.003, 1);
+      prices.push(entry + padding);
+      prices.push(entry - padding);
+    }
+
+    const maxPrice = Math.max(...prices);
+    const minPrice = Math.min(...prices);
+    const range = maxPrice - minPrice;
+    const padding = Math.max(range * 0.2, 0.5);
+
+    const displayMax = maxPrice + padding;
+    const displayMin = minPrice - padding;
+    const displayRange = displayMax - displayMin;
+
+    const yPercent = (price: number) =>
+      ((price - displayMin) / displayRange) * 100;
 
     return {
       entry,
       isLong,
-      top,
-      bottom,
       yEntry: yPercent(entry),
-      ySl: yPercent(plannedStop),
-      yTp: yPercent(plannedTarget),
-      yExit: actualExit ? yPercent(actualExit) : null,
-      plannedStop,
-      plannedTarget,
+      ySl: plannedStop != null ? yPercent(plannedStop) : null,
+      yTp: plannedTarget != null ? yPercent(plannedTarget) : null,
+      yExit: actualExit != null ? yPercent(actualExit) : null,
     };
   }, [direction, plannedEntry, plannedStop, plannedTarget, actualEntry, actualExit]);
 
-  if (!data) {
-    return (
-      <div className="bg-bg-card border border-bg-border rounded-2xl p-8 text-center text-zinc-500 text-sm">
-        Trade-Visualisierung benötigt Entry, Stop und Target.
-      </div>
-    );
-  }
+  if (!data) return null;
 
-  const { entry, isLong, yEntry, ySl, yTp, yExit, plannedStop, plannedTarget } = data;
+  const { entry, isLong, yEntry, ySl, yTp, yExit } = data;
 
-  // Berechne Höhen der Zonen (relativ zum Chart)
   const chartHeight = 280;
   const px = (percent: number) => chartHeight - (percent / 100) * chartHeight;
 
-  // SL und TP Zonen
-  const tpZoneTop = px(Math.max(yEntry, yTp));
-  const tpZoneBottom = px(Math.min(yEntry, yTp));
-  const slZoneTop = px(Math.max(yEntry, ySl));
-  const slZoneBottom = px(Math.min(yEntry, ySl));
-
-  // Welche Zone ist Gewinn / Verlust?
-  // Long: TP-Zone (oben) ist Gewinn, SL-Zone (unten) ist Verlust
-  // Short: TP-Zone (unten) ist Gewinn, SL-Zone (oben) ist Verlust
-  const tpIsWinZone = isLong ? yTp > yEntry : yTp < yEntry;
+  // Zonen-Berechnungen (nur wenn entsprechende Linien existieren)
+  const tpZone =
+    yTp !== null
+      ? {
+          top: px(Math.max(yEntry, yTp)),
+          bottom: px(Math.min(yEntry, yTp)),
+        }
+      : null;
+  const slZone =
+    ySl !== null
+      ? {
+          top: px(Math.max(yEntry, ySl)),
+          bottom: px(Math.min(yEntry, ySl)),
+        }
+      : null;
 
   return (
-    <div className="bg-bg-card border border-bg-border rounded-2xl overflow-hidden">
+    <div className="bg-bg-card border border-bg-border rounded-2xl overflow-hidden animate-fade-in">
       {/* Header */}
       <div className="px-5 py-4 border-b border-bg-border flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -126,58 +136,44 @@ export default function TradeChart({
           className="relative bg-bg-elevated rounded-xl overflow-hidden"
           style={{ height: chartHeight + "px" }}
         >
-          {/* TP-Zone */}
-          <div
-            className={cn(
-              "absolute left-0 right-0 transition-all",
-              tpIsWinZone ? "bg-success/10" : "bg-danger/10"
-            )}
-            style={{
-              top: tpZoneTop + "px",
-              height: tpZoneBottom - tpZoneTop + "px",
-            }}
-          >
+          {/* TP-Zone (grün, nur wenn TP vorhanden) */}
+          {tpZone && (
             <div
-              className={cn(
-                "absolute inset-0 opacity-50",
-                tpIsWinZone
-                  ? "bg-gradient-to-b from-success/20 to-transparent"
-                  : "bg-gradient-to-b from-danger/20 to-transparent"
-              )}
-            />
-          </div>
+              className="absolute left-0 right-0 bg-success/10 animate-fade-in"
+              style={{
+                top: tpZone.top + "px",
+                height: tpZone.bottom - tpZone.top + "px",
+              }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-success/20 to-transparent opacity-60" />
+            </div>
+          )}
 
-          {/* SL-Zone */}
-          <div
-            className={cn(
-              "absolute left-0 right-0 transition-all",
-              tpIsWinZone ? "bg-danger/10" : "bg-success/10"
-            )}
-            style={{
-              top: slZoneTop + "px",
-              height: slZoneBottom - slZoneTop + "px",
-            }}
-          >
+          {/* SL-Zone (rot, nur wenn SL vorhanden) */}
+          {slZone && (
             <div
-              className={cn(
-                "absolute inset-0 opacity-50",
-                tpIsWinZone
-                  ? "bg-gradient-to-t from-danger/20 to-transparent"
-                  : "bg-gradient-to-t from-success/20 to-transparent"
-              )}
-            />
-          </div>
+              className="absolute left-0 right-0 bg-danger/10 animate-fade-in"
+              style={{
+                top: slZone.top + "px",
+                height: slZone.bottom - slZone.top + "px",
+              }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-t from-danger/20 to-transparent opacity-60" />
+            </div>
+          )}
 
           {/* TP-Linie */}
-          <PriceLine
-            y={px(yTp)}
-            label="TP"
-            price={plannedTarget}
-            color={tpIsWinZone ? "success" : "danger"}
-            style="dashed"
-          />
+          {yTp !== null && plannedTarget != null && (
+            <PriceLine
+              y={px(yTp)}
+              label="TP"
+              price={plannedTarget}
+              color="success"
+              style="dashed"
+            />
+          )}
 
-          {/* Entry-Linie */}
+          {/* Entry-Linie (immer) */}
           <PriceLine
             y={px(yEntry)}
             label="ENTRY"
@@ -188,24 +184,33 @@ export default function TradeChart({
           />
 
           {/* SL-Linie */}
-          <PriceLine
-            y={px(ySl)}
-            label="SL"
-            price={plannedStop}
-            color={tpIsWinZone ? "danger" : "success"}
-            style="dashed"
-          />
+          {ySl !== null && plannedStop != null && (
+            <PriceLine
+              y={px(ySl)}
+              label="SL"
+              price={plannedStop}
+              color="danger"
+              style="dashed"
+            />
+          )}
 
-          {/* Exit-Linie (falls vorhanden) */}
-          {yExit !== null && actualExit !== null && (
+          {/* Exit-Linie */}
+          {yExit !== null && actualExit != null && (
             <PriceLine
               y={px(yExit)}
               label="EXIT"
               price={actualExit}
-              color={pnlCurrency && pnlCurrency >= 0 ? "success" : "danger"}
+              color={pnlCurrency != null && pnlCurrency >= 0 ? "success" : "danger"}
               style="solid"
               prominent
             />
+          )}
+
+          {/* Hinweis falls wenig Daten */}
+          {ySl === null && yTp === null && (
+            <div className="absolute bottom-3 left-3 right-3 bg-bg-card/80 backdrop-blur border border-bg-border rounded-lg px-3 py-2 text-[10px] text-zinc-400 text-center">
+              💡 Trag Stop und Target ein für die volle Visualisierung
+            </div>
           )}
         </div>
 
@@ -213,21 +218,30 @@ export default function TradeChart({
         <div className="grid grid-cols-3 gap-3 mt-5">
           <StatBox
             label="Risk"
-            value={formatPriceDiff(entry, plannedStop)}
-            sublabel="Pips"
+            value={
+              plannedStop != null
+                ? Math.abs(entry - plannedStop).toFixed(2)
+                : "—"
+            }
+            sublabel="Punkte"
             color="danger"
           />
           <StatBox
             label="Reward"
-            value={formatPriceDiff(plannedTarget, entry)}
-            sublabel="Pips"
+            value={
+              plannedTarget != null
+                ? Math.abs(plannedTarget - entry).toFixed(2)
+                : "—"
+            }
+            sublabel="Punkte"
             color="success"
           />
           <StatBox
             label="P/L"
             value={
               pnlCurrency != null
-                ? (pnlCurrency >= 0 ? "+" : "") + formatCurrency(pnlCurrency, currency)
+                ? (pnlCurrency >= 0 ? "+" : "") +
+                  formatCurrency(pnlCurrency, currency)
                 : "—"
             }
             sublabel={lotSize ? `${lotSize} Lot` : ""}
@@ -269,13 +283,12 @@ function PriceLine({
 
   return (
     <div
-      className="absolute left-0 right-0 flex items-center pointer-events-none"
+      className="absolute left-0 right-0 flex items-center pointer-events-none animate-fade-in"
       style={{ top: y + "px", transform: "translateY(-50%)" }}
     >
-      {/* Label links */}
       <div
         className={cn(
-          "ml-3 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border",
+          "ml-3 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border whitespace-nowrap",
           c.bg,
           c.text,
           prominent && "shadow-lg"
@@ -283,31 +296,31 @@ function PriceLine({
       >
         {label}
       </div>
-
-      {/* Linie */}
-      <div
-        className={cn(
-          "flex-1 mx-2",
-          c.line,
-          style === "dashed" ? "h-[1px]" : "h-[2px]",
-          style === "dashed" &&
-            "opacity-50 [background-image:repeating-linear-gradient(to_right,currentColor_0,currentColor_4px,transparent_4px,transparent_8px)] !bg-transparent",
-          prominent && style === "solid" && "shadow-[0_0_8px_currentColor]"
+      <div className="flex-1 mx-2 relative h-[2px]">
+        {style === "solid" ? (
+          <div
+            className={cn(
+              "absolute inset-0 rounded",
+              c.line,
+              prominent && color === "gold" && "shadow-[0_0_8px_rgba(212,175,55,0.6)]"
+            )}
+          />
+        ) : (
+          <div
+            className="absolute inset-0 opacity-60"
+            style={{
+              backgroundImage: `repeating-linear-gradient(to right, ${
+                color === "success" ? "#10B981" : color === "danger" ? "#EF4444" : "#DEBF44"
+              } 0, ${
+                color === "success" ? "#10B981" : color === "danger" ? "#EF4444" : "#DEBF44"
+              } 5px, transparent 5px, transparent 10px)`,
+            }}
+          />
         )}
-        style={
-          style === "dashed"
-            ? {
-                color: color === "success" ? "#10B981" : color === "danger" ? "#EF4444" : "#DEBF44",
-                backgroundColor: "transparent",
-              }
-            : undefined
-        }
-      />
-
-      {/* Preis rechts */}
+      </div>
       <div
         className={cn(
-          "mr-3 px-2 py-0.5 rounded font-mono text-[11px] font-bold border",
+          "mr-3 px-2 py-0.5 rounded font-mono text-[11px] font-bold border whitespace-nowrap",
           c.bg,
           c.text
         )}
@@ -349,11 +362,4 @@ function StatBox({
       )}
     </div>
   );
-}
-
-function formatPriceDiff(a: number, b: number): string {
-  const diff = Math.abs(a - b);
-  // XAUUSD: 1 Punkt = 10 Pips, also wenn Diff 5.50 → 55 Pips
-  // Bzw. einfacher: zeige direkt die Punkte-Differenz
-  return diff.toFixed(2);
 }
