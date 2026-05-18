@@ -10,6 +10,8 @@ import {
   fetchEurUsdRate,
 } from "@/lib/calculations";
 import { cn } from "@/lib/utils";
+import TagChips from "@/components/TagChips";
+import type { Tag } from "@/lib/tags";
 
 export default function EditTradePage() {
   const router = useRouter();
@@ -19,6 +21,8 @@ export default function EditTradePage() {
 
   const [accounts, setAccounts] = useState<any[]>([]);
   const [originalTrade, setOriginalTrade] = useState<any>(null);
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingTrade, setLoadingTrade] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,11 +46,15 @@ export default function EditTradePage() {
 
   useEffect(() => {
     async function load() {
-      const [{ data: accs }, { data: trade }] = await Promise.all([
+      // Konten, Trade und verfügbare Tags parallel laden
+      const [{ data: accs }, { data: trade }, { data: tagsData }] = await Promise.all([
         supabase.from("accounts").select("*").eq("is_active", true),
         supabase.from("trades").select("*").eq("id", tradeId).single(),
+        supabase.from("tags").select("id, name, category, color").order("category").order("name"),
       ]);
       if (accs) setAccounts(accs);
+      setAvailableTags((tagsData ?? []) as Tag[]);
+
       if (trade) {
         setOriginalTrade(trade);
         setForm({
@@ -69,6 +77,13 @@ export default function EditTradePage() {
           notes: trade.notes ?? "",
           status: (trade.status as any) ?? "closed",
         });
+
+        // Bereits zugewiesene Tags des Trades vorbefüllen
+        const { data: existingLinks } = await supabase
+          .from("trade_tags")
+          .select("tag_id")
+          .eq("trade_id", tradeId);
+        setSelectedTagIds(existingLinks?.map((r: any) => r.tag_id) ?? []);
       }
       setLoadingTrade(false);
     }
@@ -164,6 +179,23 @@ export default function EditTradePage() {
             current_balance: Number(account.current_balance) + pnlDiff,
           })
           .eq("id", account.id);
+      }
+    }
+
+    // Tags komplett ersetzen: alle alten löschen, neue einfügen
+    await supabase.from("trade_tags").delete().eq("trade_id", tradeId);
+    if (selectedTagIds.length > 0) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from("trade_tags").insert(
+          selectedTagIds.map((tagId) => ({
+            user_id: user.id,
+            trade_id: tradeId,
+            tag_id: tagId,
+          }))
+        );
       }
     }
 
@@ -277,6 +309,21 @@ export default function EditTradePage() {
             <textarea value={form.notes} onChange={(e) => update("notes", e.target.value)} rows={3} className={inputCls} />
           </div>
         </div>
+
+        {/* Tags zuweisen */}
+        {availableTags.length > 0 && (
+          <div className="bg-bg-card border border-bg-border rounded-2xl p-5">
+            <h3 className="text-sm font-semibold text-gold-400 uppercase tracking-wider mb-3">
+              Tags
+            </h3>
+            <TagChips
+              tags={availableTags}
+              selectedIds={selectedTagIds}
+              onChange={setSelectedTagIds}
+              mode="edit"
+            />
+          </div>
+        )}
 
         {error && (
           <div className="text-sm text-danger bg-danger/10 border border-danger/30 rounded-lg px-3 py-2">{error}</div>

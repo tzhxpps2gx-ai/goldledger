@@ -40,23 +40,24 @@ Abgeschlossene Etappen 1-10:
 - Animationen (fade-in, slide-up, hover-effects)
 - TradeChart-Komponente (flexibel, funktioniert auch mit nur Entry)
 
-Etappe 11 (Interaktiv) — IN ARBEIT, hat Build-Bugs:
+Etappe 11 (Interaktiv) — ABGESCHLOSSEN:
 - CalendarClient.tsx mit klickbaren Tagen + Day-Modal
 - TradesListClient.tsx mit Live-Filter (Suche + Wins/Losses/Offen-Chips)
-- Build schlug fehl wegen Template-Literal-Problemen beim Kopieren in GitHub-Web-Editor
 
-## AKTUELLE BUGS / OFFENE ISSUES — ALS ERSTES FIXEN
-1. Kalender lädt nicht (404 oder Build-Error in CalendarClient.tsx)
-2. TradesListClient nicht sichtbar (keine Suchleiste in Trade-Liste)
-3. TradeChart vielleicht nicht sichtbar auf Trade-Detail-Seite
+Etappe 12 (TradingView-Chart) — ABGESCHLOSSEN:
+- TradeChartLive.tsx: echte XAUUSD-Kerzen via TwelveData, lightweight-charts v5
+- /api/gold-candles: Trade-Zeit ±2h, 5min-Kerzen, 1h-Cache (API-Key serverseitig)
+- Automatischer Fallback auf TradeChart.tsx bei Fehler/fehlendem API-Key
+- TWELVEDATA_API_KEY muss in Vercel → Environment Variables gesetzt sein
 
-## Nächste Etappe (12) — TradingView-Chart pro Trade
-- TradingView lightweight-charts Library (`npm install lightweight-charts`)
-- TwelveData API für historische XAUUSD-Kerzen (kostenlos, 800 Anfragen/Tag)
-- Echter Goldpreis-Chart pro Trade mit Entry/SL/TP/Exit als Overlay-Linien
-- Linien NICHT manuell verschiebbar — nur aus Trade-Daten generiert
-- Optional: Live-Preview im Trade-Eingabe-Formular während Tippen
-- User muss TwelveData-Account anlegen + API-Key in Vercel als Env Var setzen
+Etappe 13 (Tag-System) — ABGESCHLOSSEN:
+- Tags bei Neuer Trade + Edit zuweisbar (Multi-Select, gold-tinted)
+- TagChips-Komponente: edit- und display-Modus, nach Kategorie gruppiert
+- Trade-Detail zeigt Tags als Badges
+- Trade-Liste zeigt Tags pro Zeile (max. 3 + "+N")
+- Tag-Filter in Trade-Liste (OR-Logik, kombinierbar mit Suche + Status)
+- Ausstehend: eigene Tags anlegen/löschen (Etappe 14 Settings)
+- Ausstehend: Tag-Statistiken / Fehleranalyse nach Tag
 
 ## Database-Schema (Supabase, RLS überall aktiv)
 8 Tabellen: profiles, accounts, trades, tags, trade_tags, screenshots, goals, reviews

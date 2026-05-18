@@ -10,11 +10,15 @@ import {
   fetchEurUsdRate,
 } from "@/lib/calculations";
 import { cn } from "@/lib/utils";
+import TagChips from "@/components/TagChips";
+import type { Tag } from "@/lib/tags";
 
 export default function NewTradePage() {
   const router = useRouter();
   const supabase = createClient();
   const [accounts, setAccounts] = useState<any[]>([]);
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,17 +40,19 @@ export default function NewTradePage() {
   });
 
   useEffect(() => {
-    async function loadAccounts() {
-      const { data } = await supabase
-        .from("accounts")
-        .select("*")
-        .eq("is_active", true);
-      if (data && data.length > 0) {
-        setAccounts(data);
-        setForm((f) => ({ ...f, account_id: data[0].id }));
+    async function loadData() {
+      // Konten und Tags parallel laden
+      const [{ data: accs }, { data: tagsData }] = await Promise.all([
+        supabase.from("accounts").select("*").eq("is_active", true),
+        supabase.from("tags").select("id, name, category, color").order("category").order("name"),
+      ]);
+      if (accs && accs.length > 0) {
+        setAccounts(accs);
+        setForm((f) => ({ ...f, account_id: accs[0].id }));
       }
+      setAvailableTags((tagsData ?? []) as Tag[]);
     }
-    loadAccounts();
+    loadData();
   }, []);
 
   function update<K extends keyof typeof form>(key: K, value: typeof form[K]) {
@@ -142,6 +148,17 @@ export default function NewTradePage() {
           })
           .eq("id", account.id);
       }
+    }
+
+    // Tags dem Trade zuweisen
+    if (selectedTagIds.length > 0) {
+      await supabase.from("trade_tags").insert(
+        selectedTagIds.map((tagId) => ({
+          user_id: user.id,
+          trade_id: newTrade.id,
+          tag_id: tagId,
+        }))
+      );
     }
 
     router.push(`/trades/${newTrade.id}`);
@@ -350,6 +367,21 @@ export default function NewTradePage() {
             />
           </div>
         </div>
+
+        {/* Tags zuweisen */}
+        {availableTags.length > 0 && (
+          <div className="bg-bg-card border border-bg-border rounded-2xl p-5">
+            <h3 className="text-sm font-semibold text-gold-400 uppercase tracking-wider mb-3">
+              Tags
+            </h3>
+            <TagChips
+              tags={availableTags}
+              selectedIds={selectedTagIds}
+              onChange={setSelectedTagIds}
+              mode="edit"
+            />
+          </div>
+        )}
 
         {error && (
           <div className="text-sm text-danger bg-danger/10 border border-danger/30 rounded-lg px-3 py-2">

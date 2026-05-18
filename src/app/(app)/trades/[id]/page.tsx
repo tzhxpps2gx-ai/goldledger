@@ -5,6 +5,8 @@ import { formatCurrency, formatDateTime, pnlColor, cn } from "@/lib/utils";
 import { ArrowLeft, Pencil } from "lucide-react";
 import DeleteTradeButton from "@/components/DeleteTradeButton";
 import TradeChartLive from "@/components/TradeChartLive";
+import TagChips from "@/components/TagChips";
+import { loadTagsForTrade } from "@/lib/tags";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +32,9 @@ export default async function TradeDetailPage({
     .single();
 
   if (!account) redirect("/dashboard");
+
+  // Tags des Trades laden
+  const tradeTags = await loadTagsForTrade(supabase, trade.id);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
@@ -103,6 +108,20 @@ export default async function TradeDetailPage({
           <Field label="Exit" value={trade.actual_exit?.toString() ?? "—"} />
         </div>
       </div>
+
+      {/* Tags des Trades */}
+      {tradeTags.length > 0 && (
+        <div className="bg-bg-card border border-bg-border rounded-2xl px-5 py-4">
+          <h3 className="text-xs font-semibold text-gold-400 uppercase tracking-wider mb-3">
+            Tags
+          </h3>
+          <TagChips
+            tags={tradeTags}
+            selectedIds={tradeTags.map((t) => t.id)}
+            mode="display"
+          />
+        </div>
+      )}
 
       {/* Etappe 12: Echter Candlestick-Chart, Fallback auf schematische Darstellung */}
       <TradeChartLive trade={trade} currency={account.currency} />

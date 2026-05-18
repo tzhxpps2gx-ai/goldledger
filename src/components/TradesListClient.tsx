@@ -4,7 +4,9 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { type Trade } from "@/lib/calculations";
 import { formatCurrency, formatDateTime, pnlColor, cn } from "@/lib/utils";
-import { Plus, Search, X, Filter as FilterIcon } from "lucide-react";
+import { Plus, Search, X, Filter as FilterIcon, Tag as TagIcon } from "lucide-react";
+import TagChips from "@/components/TagChips";
+import type { Tag } from "@/lib/tags";
 
 type FilterType = "all" | "wins" | "losses" | "open";
 
@@ -18,17 +20,30 @@ const FILTER_LABELS: Record<FilterType, string> = {
 export default function TradesListClient({
   trades,
   currency,
+  availableTags = [],
+  tradeTagsMap = {},
 }: {
   trades: Trade[];
   currency: string;
+  availableTags?: Tag[];
+  tradeTagsMap?: Record<string, Tag[]>;
 }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterType>("all");
+  const [tagFilter, setTagFilter] = useState<string[]>([]);
+
+  // Tags die tatsächlich in mindestens einem Trade vorkommen → sinnvolle Filter-Optionen
+  const filterableTags = useMemo(() => {
+    const usedIds = new Set(
+      Object.values(tradeTagsMap).flatMap((tags) => tags.map((t) => t.id))
+    );
+    return availableTags.filter((t) => usedIds.has(t.id));
+  }, [availableTags, tradeTagsMap]);
 
   const filtered = useMemo(() => {
     let result = trades;
 
-    // Filter
+    // Status-Filter
     if (filter === "wins") {
       result = result.filter(
         (t) => t.status === "closed" && (t.pnl_currency ?? 0) > 0
@@ -43,7 +58,15 @@ export default function TradesListClient({
       );
     }
 
-    // Suche
+    // Tag-Filter (OR-Logik: Trade hat mindestens einen der gewählten Tags)
+    if (tagFilter.length > 0) {
+      result = result.filter((t) => {
+        const tradeTags = tradeTagsMap[t.id] ?? [];
+        return tagFilter.some((tid) => tradeTags.some((tag) => tag.id === tid));
+      });
+    }
+
+    // Textsuche
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       result = result.filter((t: any) => {
@@ -58,7 +81,7 @@ export default function TradesListClient({
     }
 
     return result;
-  }, [trades, filter, search]);
+  }, [trades, filter, tagFilter, search, tradeTagsMap]);
 
   // Stats für die aktuelle Anzeige
   const totalPnl = filtered.reduce(
@@ -81,7 +104,7 @@ export default function TradesListClient({
           <p className="text-zinc-400 text-sm mt-1">
             {filtered.length}{" "}
             {filtered.length === 1 ? "Trade" : "Trades"}
-            {(search || filter !== "all") && (
+            {(search || filter !== "all" || tagFilter.length > 0) && (
               <> · gefiltert aus {trades.length}</>
             )}
             {closed > 0 && (
@@ -130,7 +153,7 @@ export default function TradesListClient({
         )}
       </div>
 
-      {/* Filter-Chips */}
+      {/* Status-Filter-Chips */}
       <div className="flex gap-2 overflow-x-auto scrollbar-hidden pb-1">
         {(Object.keys(FILTER_LABELS) as FilterType[]).map((f) => {
           const isActive = filter === f;
@@ -175,6 +198,53 @@ export default function TradesListClient({
         })}
       </div>
 
+      {/* Tag-Filter — nur anzeigen wenn Tags vorhanden */}
+      {filterableTags.length > 0 && (
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 uppercase tracking-wider font-medium">
+            <TagIcon className="w-3 h-3" />
+            Tags
+            {tagFilter.length > 0 && (
+              <button
+                onClick={() => setTagFilter([])}
+                className="ml-auto text-gold-400 hover:text-gold-300 normal-case tracking-normal font-normal"
+              >
+                zurücksetzen
+              </button>
+            )}
+          </div>
+          <div className="flex gap-1.5 flex-wrap">
+            {filterableTags.map((tag) => {
+              const active = tagFilter.includes(tag.id);
+              return (
+                <button
+                  key={tag.id}
+                  onClick={() =>
+                    setTagFilter((prev) =>
+                      prev.includes(tag.id)
+                        ? prev.filter((id) => id !== tag.id)
+                        : [...prev, tag.id]
+                    )
+                  }
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-95 flex-shrink-0",
+                    active
+                      ? "bg-gold-500/20 border border-gold-500/40 text-gold-400"
+                      : "bg-bg-card border border-bg-border text-zinc-400 hover:text-white"
+                  )}
+                >
+                  <span
+                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: tag.color }}
+                  />
+                  {tag.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Liste */}
       <div className="bg-bg-card border border-bg-border rounded-2xl overflow-hidden">
         {filtered.length === 0 ? (
@@ -200,6 +270,7 @@ export default function TradesListClient({
                   onClick={() => {
                     setSearch("");
                     setFilter("all");
+                    setTagFilter([]);
                   }}
                   className="mt-3 text-xs text-gold-400 hover:text-gold-300 font-medium"
                 >
@@ -241,6 +312,17 @@ export default function TradesListClient({
                       {" · "}
                       <span className="capitalize">{t.status}</span>
                     </div>
+                    {/* Tags des Trades — max. 3 auf Mobile */}
+                    {(tradeTagsMap[t.id] ?? []).length > 0 && (
+                      <div className="mt-1">
+                        <TagChips
+                          tags={tradeTagsMap[t.id]}
+                          selectedIds={tradeTagsMap[t.id].map((tag) => tag.id)}
+                          mode="display"
+                          maxDisplay={3}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0 ml-3">
