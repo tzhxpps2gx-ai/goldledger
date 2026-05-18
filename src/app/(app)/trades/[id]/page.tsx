@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatCurrency, formatDateTime, pnlColor, cn } from "@/lib/utils";
 import { ArrowLeft, Pencil } from "lucide-react";
 import DeleteTradeButton from "@/components/DeleteTradeButton";
-import TradeChart from "@/components/TradeChart";
+import TradingViewChart from "@/components/TradingViewChart";
 
 export const dynamic = "force-dynamic";
 
@@ -104,18 +104,17 @@ export default async function TradeDetailPage({
         </div>
       </div>
 
-      {/* Trade-Visualisierung */}
-      <TradeChart
-        direction={trade.direction}
+      {/* Live Candlestick-Chart (Etappe 12) */}
+      <TradingViewChart
+        entryTime={trade.entry_time}
+        exitTime={trade.exit_time}
         plannedEntry={trade.planned_entry}
         plannedStop={trade.planned_stop}
         plannedTarget={trade.planned_target}
         actualEntry={trade.actual_entry}
         actualExit={trade.actual_exit}
+        direction={trade.direction}
         pnlCurrency={trade.pnl_currency}
-        rMultiple={trade.r_multiple}
-        lotSize={trade.lot_size}
-        currency={account.currency}
       />
 
       {/* Pre-Trade Plan */}
