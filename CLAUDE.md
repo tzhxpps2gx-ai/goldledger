@@ -56,8 +56,12 @@ Etappe 13 (Tag-System) — ABGESCHLOSSEN:
 - Trade-Detail zeigt Tags als Badges
 - Trade-Liste zeigt Tags pro Zeile (max. 3 + "+N")
 - Tag-Filter in Trade-Liste (OR-Logik, kombinierbar mit Suche + Status)
-- Ausstehend: eigene Tags anlegen/löschen (Etappe 14 Settings)
-- Ausstehend: Tag-Statistiken / Fehleranalyse nach Tag
+
+Etappe 14 (Tag-Management + Analytics) — ABGESCHLOSSEN:
+- TagManager: Tags inline umbenennen/löschen (mit Trade-Anzahl-Bestätigung) + neue Tags anlegen
+- Settings-Seite: Tab-Navigation (Tags aktiv / Konto + Profil als Placeholder)
+- TagPerformanceClient: sortierbare Stat-Karten (P/L, Win-Rate, Ø R, Trades) mit P/L-Balken
+- Analytics-Seite: serverseitige Aggregation geschlossener Trades → Tag-Statistiken
 
 ## Database-Schema (Supabase, RLS überall aktiv)
 8 Tabellen: profiles, accounts, trades, tags, trade_tags, screenshots, goals, reviews
