@@ -1,4 +1,4 @@
-// Tag-Typen und Datenlade-Hilfsfunktionen
+// Tag-Typen, Statistiken und Datenlade-Hilfsfunktionen
 // Nutzbar sowohl aus Server- als auch Client-Komponenten
 
 export type Tag = {
@@ -6,6 +6,18 @@ export type Tag = {
   name: string;
   category: string; // "mistake" | "setup" | "emotion" | eigene
   color: string;    // Hex-Farbe, z.B. "#EF4444"
+};
+
+// Aggregierte Performance-Daten pro Tag (für Analytics)
+export type TagStat = {
+  id: string;
+  name: string;
+  category: string;
+  color: string;
+  tradeCount: number;
+  totalPnl: number;
+  winRate: number;      // 0–100
+  avgR: number | null;
 };
 
 // Alle Tags des eingeloggten Benutzers laden (RLS filtert automatisch)
