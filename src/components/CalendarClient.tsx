@@ -195,4 +195,150 @@ export default function CalendarClient({
       {selectedDayData && (
         <DayModal
           data={selectedDayData}
-          currenc
+          currency={currency}
+          onClose={() => setSelectedDay(null)}
+        />
+      )}
+    </>
+  );
+}
+
+function MiniStat({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string;
+  accent?: "success" | "danger";
+}) {
+  return (
+    <div className="bg-bg-card border border-bg-border rounded-xl p-3 text-center">
+      <div className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium">
+        {label}
+      </div>
+      <div
+        className={cn(
+          "text-lg font-bold mt-0.5",
+          accent === "success" && "text-success",
+          accent === "danger" && "text-danger",
+          !accent && "text-white"
+        )}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function DayModal({
+  data,
+  currency,
+  onClose,
+}: {
+  data: {
+    iso: string;
+    trades: Trade[];
+    pnl: number;
+    count: number;
+  };
+  currency: string;
+  onClose: () => void;
+}) {
+  const dateStr = new Date(data.iso + "T12:00:00").toLocaleDateString("de-DE", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 animate-fade-in"
+        onClick={onClose}
+      />
+      <div className="fixed inset-x-4 bottom-0 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-md z-50">
+        <div className="bg-bg-card border border-bg-border rounded-t-2xl md:rounded-2xl p-5 max-h-[80vh] overflow-y-auto">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-0.5">
+                Tag
+              </div>
+              <div className="text-lg font-bold text-white capitalize">{dateStr}</div>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-lg bg-bg-elevated border border-bg-border text-zinc-400 hover:text-white transition active:scale-95"
+              aria-label="Schließen"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-4 mb-4 p-3 bg-bg-elevated border border-bg-border rounded-xl">
+            <div>
+              <div className="text-[10px] text-zinc-500 uppercase tracking-wider">P/L</div>
+              <div
+                className={cn(
+                  "text-base font-bold",
+                  data.pnl >= 0 ? "text-success" : "text-danger"
+                )}
+              >
+                {data.pnl >= 0 ? "+" : ""}
+                {formatCurrency(data.pnl, currency)}
+              </div>
+            </div>
+            <div className="w-px h-8 bg-bg-border" />
+            <div>
+              <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Trades</div>
+              <div className="text-base font-bold text-white">{data.count}</div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            {data.trades.map((t) => (
+              <Link
+                key={t.id}
+                href={`/trades/${t.id}`}
+                onClick={onClose}
+                className="flex items-center justify-between p-3 bg-bg-elevated border border-bg-border rounded-xl hover:border-gold-500/30 transition group"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <div
+                    className={cn(
+                      "px-2 py-0.5 rounded text-[10px] font-bold uppercase flex-shrink-0",
+                      t.direction === "long"
+                        ? "bg-success/15 text-success"
+                        : "bg-danger/15 text-danger"
+                    )}
+                  >
+                    {t.direction === "long" ? "L" : "S"}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-white">{t.symbol}</div>
+                    {t.entry_time && (
+                      <div className="text-[10px] text-zinc-500">
+                        {formatDateTime(t.entry_time)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div
+                  className={cn(
+                    "text-sm font-semibold flex-shrink-0 ml-3",
+                    pnlColor(t.pnl_currency)
+                  )}
+                >
+                  {t.pnl_currency != null
+                    ? (t.pnl_currency >= 0 ? "+" : "") +
+                      formatCurrency(t.pnl_currency, currency)
+                    : "—"}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
