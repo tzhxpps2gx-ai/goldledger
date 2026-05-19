@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import TagChips from "@/components/TagChips";
 import type { Tag } from "@/lib/tags";
+import { saveTradeTagsAction } from "@/app/actions/trade-tags";
 
 export default function NewTradePage() {
   const router = useRouter();
@@ -150,16 +151,13 @@ export default function NewTradePage() {
       }
     }
 
-    // Tags dem Trade zuweisen
+    // Tags dem Trade zuweisen (Server Action)
     if (selectedTagIds.length > 0) {
-      const { error: tagError } = await supabase.from("trade_tags").insert(
-        selectedTagIds.map((tagId) => ({
-          trade_id: newTrade.id,
-          tag_id: tagId,
-        }))
-      );
+      const { error: tagError } = await saveTradeTagsAction(newTrade.id, selectedTagIds);
       if (tagError) {
-        console.error("trade_tags insert error:", tagError.message);
+        setError("Tags konnten nicht gespeichert werden: " + tagError);
+        setLoading(false);
+        return;
       }
     }
 

@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import TagChips from "@/components/TagChips";
 import type { Tag } from "@/lib/tags";
+import { saveTradeTagsAction } from "@/app/actions/trade-tags";
 
 export default function EditTradePage() {
   const router = useRouter();
@@ -182,18 +183,12 @@ export default function EditTradePage() {
       }
     }
 
-    // Tags komplett ersetzen: alle alten löschen, neue einfügen
-    await supabase.from("trade_tags").delete().eq("trade_id", tradeId);
-    if (selectedTagIds.length > 0) {
-      const { error: tagError } = await supabase.from("trade_tags").insert(
-        selectedTagIds.map((tagId) => ({
-          trade_id: tradeId,
-          tag_id: tagId,
-        }))
-      );
-      if (tagError) {
-        console.error("trade_tags insert error:", tagError.message);
-      }
+    // Tags komplett ersetzen via Server Action (löschen + neu einfügen)
+    const { error: tagError } = await saveTradeTagsAction(tradeId, selectedTagIds);
+    if (tagError) {
+      setError("Tags konnten nicht gespeichert werden: " + tagError);
+      setLoading(false);
+      return;
     }
 
     router.refresh();
