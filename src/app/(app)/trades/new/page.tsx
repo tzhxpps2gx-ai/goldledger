@@ -152,17 +152,19 @@ export default function NewTradePage() {
 
     // Tags dem Trade zuweisen
     if (selectedTagIds.length > 0) {
-      await supabase.from("trade_tags").insert(
+      const { error: tagError } = await supabase.from("trade_tags").insert(
         selectedTagIds.map((tagId) => ({
-          user_id: user.id,
           trade_id: newTrade.id,
           tag_id: tagId,
         }))
       );
+      if (tagError) {
+        console.error("trade_tags insert error:", tagError.message);
+      }
     }
 
-    router.push(`/trades/${newTrade.id}`);
     router.refresh();
+    router.push(`/trades/${newTrade.id}`);
   }
 
   if (accounts.length === 0) {

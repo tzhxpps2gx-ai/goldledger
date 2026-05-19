@@ -185,22 +185,19 @@ export default function EditTradePage() {
     // Tags komplett ersetzen: alle alten löschen, neue einfügen
     await supabase.from("trade_tags").delete().eq("trade_id", tradeId);
     if (selectedTagIds.length > 0) {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from("trade_tags").insert(
-          selectedTagIds.map((tagId) => ({
-            user_id: user.id,
-            trade_id: tradeId,
-            tag_id: tagId,
-          }))
-        );
+      const { error: tagError } = await supabase.from("trade_tags").insert(
+        selectedTagIds.map((tagId) => ({
+          trade_id: tradeId,
+          tag_id: tagId,
+        }))
+      );
+      if (tagError) {
+        console.error("trade_tags insert error:", tagError.message);
       }
     }
 
-    router.push(`/trades/${tradeId}`);
     router.refresh();
+    router.push(`/trades/${tradeId}`);
   }
 
   if (loadingTrade) {
