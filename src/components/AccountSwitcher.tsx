@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { ChevronUp, Check, Plus } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import Link from "next/link";
+import { updateUserPreference } from "@/lib/userPreferences";
 
 type Account = {
   id: string;
@@ -15,36 +16,37 @@ type Account = {
   current_balance: number;
 };
 
-export default function AccountSwitcher({ userEmail }: { userEmail: string }) {
+export default function AccountSwitcher({
+  userEmail,
+  activeAccountIdProp,
+}: {
+  userEmail: string;
+  activeAccountIdProp: string | null;
+}) {
   const router = useRouter();
   const supabase = createClient();
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(activeAccountIdProp);
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    async function loadAccounts() {
-      const { data } = await supabase
-        .from("accounts")
-        .select("id, name, account_type, currency, current_balance")
-        .eq("is_active", true)
-        .order("created_at", { ascending: true });
-
-      if (data) {
+    supabase
+      .from("accounts")
+      .select("id, name, account_type, currency, current_balance")
+      .eq("is_active", true)
+      .order("created_at", { ascending: true })
+      .then(({ data }) => {
+        if (!data) return;
         setAccounts(data as Account[]);
-        // Active aus localStorage oder erstes Konto
-        const stored = typeof window !== "undefined"
-          ? localStorage.getItem("activeAccountId")
-          : null;
-        const valid = stored && data.some((a) => a.id === stored);
-        setActiveId(valid ? stored : data[0]?.id ?? null);
-      }
-    }
-    loadAccounts();
-  }, []);
+        // Wenn Prop null oder nicht gefunden: erstes Konto wählen
+        const valid = activeAccountIdProp && data.some((a) => a.id === activeAccountIdProp);
+        if (!valid && data[0]) {
+          setActiveId(data[0].id);
+        }
+      });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Klick außerhalb → schließen
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -55,12 +57,10 @@ export default function AccountSwitcher({ userEmail }: { userEmail: string }) {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
 
-  function selectAccount(id: string) {
-    setActiveId(id);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("activeAccountId", id);
-    }
+  async function selectAccount(id: string) {
+    setActiveId(id); // Optimistic
     setOpen(false);
+    await updateUserPreference("active_account_id", id);
     router.refresh();
   }
 
@@ -96,12 +96,7 @@ export default function AccountSwitcher({ userEmail }: { userEmail: string }) {
             {formatCurrency(Number(active.current_balance), active.currency)}
           </div>
         </div>
-        <ChevronUp
-          className={cn(
-            "w-4 h-4 text-zinc-500 transition-transform",
-            !open && "rotate-180"
-          )}
-        />
+        <ChevronUp className={cn("w-4 h-4 text-zinc-500 transition-transform", !open && "rotate-180")} />
       </button>
 
       {open && (
@@ -116,37 +111,26 @@ export default function AccountSwitcher({ userEmail }: { userEmail: string }) {
                 onClick={() => selectAccount(a.id)}
                 className={cn(
                   "w-full flex items-center gap-3 px-2 py-2 rounded-lg text-left transition",
-                  a.id === activeId
-                    ? "bg-gold-500/10"
-                    : "hover:bg-bg-card"
+                  a.id === activeId ? "bg-gold-500/10" : "hover:bg-bg-card"
                 )}
               >
-                <div
-                  className={cn(
-                    "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0",
-                    a.id === activeId
-                      ? "bg-gradient-to-br from-gold-500 to-gold-600 text-bg"
-                      : "bg-bg-card border border-bg-border text-gold-400"
-                  )}
-                >
+                <div className={cn(
+                  "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0",
+                  a.id === activeId
+                    ? "bg-gradient-to-br from-gold-500 to-gold-600 text-bg"
+                    : "bg-bg-card border border-bg-border text-gold-400"
+                )}>
                   {a.name[0]?.toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div
-                    className={cn(
-                      "text-xs font-medium truncate",
-                      a.id === activeId ? "text-gold-400" : "text-white"
-                    )}
-                  >
+                  <div className={cn("text-xs font-medium truncate", a.id === activeId ? "text-gold-400" : "text-white")}>
                     {a.name}
                   </div>
                   <div className="text-[10px] text-zinc-500 capitalize">
                     {a.account_type} · {formatCurrency(Number(a.current_balance), a.currency)}
                   </div>
                 </div>
-                {a.id === activeId && (
-                  <Check className="w-3.5 h-3.5 text-gold-400 flex-shrink-0" />
-                )}
+                {a.id === activeId && <Check className="w-3.5 h-3.5 text-gold-400 flex-shrink-0" />}
               </button>
             ))}
           </div>
