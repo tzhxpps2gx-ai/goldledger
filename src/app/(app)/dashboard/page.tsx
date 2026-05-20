@@ -4,6 +4,7 @@ import { type Goal, type TradeLike } from "@/lib/goals";
 import DashboardClient from "@/components/DashboardClient";
 import { redirect } from "next/navigation";
 import { archiveExpiredGoalsAction } from "@/app/actions/goals";
+import { getUserPreferences } from "@/lib/getUserPreferences";
 
 export const dynamic = "force-dynamic";
 
@@ -11,17 +12,22 @@ export default async function DashboardPage() {
   const supabase = createClient();
   await archiveExpiredGoalsAction();
 
-  const { data: accounts } = await supabase
-    .from("accounts")
-    .select("*")
-    .eq("is_active", true)
-    .order("created_at", { ascending: true });
+  const [{ data: accounts }, userPreferences] = await Promise.all([
+    supabase
+      .from("accounts")
+      .select("*")
+      .eq("is_active", true)
+      .order("created_at", { ascending: true }),
+    getUserPreferences(),
+  ]);
 
   if (!accounts || accounts.length === 0) {
     redirect("/onboarding");
   }
 
-  const account = accounts[0];
+  const account =
+    accounts.find((a) => a.id === userPreferences.active_account_id) ??
+    accounts[0];
 
   const [{ data: trades }, { data: goals }, { data: goalTrades }] =
     await Promise.all([
@@ -53,6 +59,7 @@ export default async function DashboardPage() {
       }}
       goals={(goals ?? []) as Goal[]}
       goalTrades={(goalTrades ?? []) as TradeLike[]}
+      userPreferences={userPreferences}
     />
   );
 }
