@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { type Trade } from "@/lib/calculations";
 import { redirect } from "next/navigation";
 import CalendarClient from "@/components/CalendarClient";
+import { getUserPreferences } from "@/lib/getUserPreferences";
 
 export const dynamic = "force-dynamic";
 
@@ -12,15 +13,18 @@ export default async function CalendarPage({
 }) {
   const supabase = createClient();
 
-  const { data: accounts } = await supabase
-    .from("accounts")
-    .select("*")
-    .eq("is_active", true);
+  const [{ data: accounts }, userPreferences] = await Promise.all([
+    supabase.from("accounts").select("*").eq("is_active", true),
+    getUserPreferences(),
+  ]);
 
   if (!accounts || accounts.length === 0) {
     redirect("/onboarding");
   }
-  const account = accounts[0];
+
+  const account =
+    accounts.find((a) => a.id === userPreferences.active_account_id) ??
+    accounts[0];
 
   const now = new Date();
   const month = searchParams.month
