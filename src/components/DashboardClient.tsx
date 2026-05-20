@@ -71,7 +71,7 @@ export default function DashboardClient({
             Dashboard
           </h1>
           <p className="text-zinc-400 text-sm mt-1">
-            {account.name} \u00b7 {account.broker} \u00b7{" "}
+            {account.name} · {account.broker} ·{" "}
             <span className="text-gold-400">
               {formatCurrency(Number(account.current_balance), account.currency)}
             </span>
@@ -119,14 +119,14 @@ export default function DashboardClient({
           icon={Target}
         />
         <KpiCard
-          label="\u00d8 R-Multiple"
+          label="Ø R-Multiple"
           value={stats.avgR.toFixed(2) + "R"}
           accent={stats.avgR > 0 ? "success" : stats.avgR < 0 ? "danger" : undefined}
           icon={Activity}
         />
         <KpiCard
           label="Profit Factor"
-          value={stats.profitFactor === 999 ? "\u221e" : stats.profitFactor.toFixed(2)}
+          value={stats.profitFactor === 999 ? "∞" : stats.profitFactor.toFixed(2)}
           accent={stats.profitFactor >= 1 ? "success" : stats.profitFactor > 0 ? "danger" : undefined}
           icon={Activity}
         />
@@ -139,7 +139,7 @@ export default function DashboardClient({
           <div>
             <h2 className="text-base font-semibold text-white">Equity-Kurve</h2>
             <p className="text-xs text-zinc-500 mt-0.5">
-              Kapital im Zeitraum \u201e{TIME_RANGE_LABELS[range]}\u201c
+              Kapital im Zeitraum „{TIME_RANGE_LABELS[range]}“
             </p>
           </div>
         </div>
@@ -159,7 +159,7 @@ export default function DashboardClient({
             href="/trades"
             className="text-xs text-gold-400 hover:text-gold-300 font-medium"
           >
-            Alle ansehen \u2192
+            Alle ansehen →
           </Link>
         </div>
         {recentTrades.length === 0 ? (
@@ -207,7 +207,7 @@ export default function DashboardClient({
                     {t.pnl_currency != null
                       ? (t.pnl_currency >= 0 ? "+" : "") +
                         formatCurrency(t.pnl_currency, account.currency)
-                      : "\u2014"}
+                      : "—"}
                   </div>
                   <div className="text-[11px] text-zinc-500">
                     {t.r_multiple != null ? t.r_multiple + "R" : t.status}
@@ -247,7 +247,7 @@ function AllTimeStatsCard({
           className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-300 transition text-[10px] md:text-[11px] font-medium uppercase tracking-wider"
         >
           <span className="hidden md:inline">
-            {expanded ? "Schlie\u00dfen" : "Mehr Details"}
+            {expanded ? "Schließen" : "Mehr Details"}
           </span>
           <ChevronDown
             className={cn(
@@ -280,7 +280,7 @@ function AllTimeStatsCard({
           icon={stats.totalPnl >= 0 ? TrendingUp : TrendingDown}
         />
         <KpiCard
-          label="\u00d8 R-Multiple"
+          label="Ø R-Multiple"
           value={stats.avgR.toFixed(2) + "R"}
           accent={stats.avgR > 0 ? "success" : stats.avgR < 0 ? "danger" : undefined}
           icon={Activity}
@@ -297,7 +297,7 @@ function AllTimeStatsCard({
         <div className="bg-bg-card border border-bg-border rounded-2xl p-4 md:p-5 grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in">
           <DetailStat
             label="Profit Factor"
-            value={stats.profitFactor === 999 ? "\u221e" : stats.profitFactor.toFixed(2)}
+            value={stats.profitFactor === 999 ? "∞" : stats.profitFactor.toFixed(2)}
             accent={stats.profitFactor >= 1 ? "success" : stats.profitFactor > 0 ? "danger" : undefined}
             icon={Zap}
           />
