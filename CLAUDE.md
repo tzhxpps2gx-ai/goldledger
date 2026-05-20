@@ -11,6 +11,7 @@ Vorher gabs viele Probleme mit kopierten Code-Snippets (Template-Literal-Fehler 
 - Supabase (Postgres + Auth + Storage, EU-Frankfurt Region)
 - Vercel auto-deployment vom GitHub main-branch
 - Recharts für Charts, Lucide-React für Icons
+- react-confetti (6.x) für Konfetti-Overlay
 
 ## Wichtige URLs
 - Production: https://goldledger-fi24.vercel.app
@@ -33,7 +34,7 @@ Abgeschlossene Etappen 1-10:
 - Trade-CRUD (Anlegen, Bearbeiten, Löschen, Detail)
 - Edit-Trade-Funktion mit P/L-Diff-Korrektur am Account-Balance
 - Equity-Chart, Calendar-Heatmap, Trade-Liste
-- AccountSwitcher (localStorage-basiert)
+- AccountSwitcher (jetzt DB-basiert, kein localStorage mehr)
 - Mobile-Drawer-Navigation + Bottom-Nav (nur Dashboard + Neuer Trade)
 - P/L-Berechnung in EUR mit Live USD/EUR-Wechselkurs (exchangerate.host)
 - Logo (5 SVG-Varianten, aktiv: Hexagon-G)
@@ -59,7 +60,7 @@ Etappe 13 (Tag-System) — ABGESCHLOSSEN:
 
 Etappe 14 (Tag-Management + Analytics) — ABGESCHLOSSEN:
 - TagManager: Tags inline umbenennen/löschen (mit Trade-Anzahl-Bestätigung) + neue Tags anlegen
-- Settings-Seite: Tab-Navigation (Tags aktiv / Konto + Profil als Placeholder)
+- Settings-Seite: Tab-Navigation (Tags / Konto / Profil / Belohnungen)
 - TagPerformanceClient: sortierbare Stat-Karten (P/L, Win-Rate, Ø R, Trades) mit P/L-Balken
 - Analytics-Seite: serverseitige Aggregation geschlossener Trades → Tag-Statistiken
 
@@ -75,6 +76,26 @@ Etappe 15 (Ziele-System) — ABGESCHLOSSEN:
 - Navigation: "Ziele" + Target-Icon war bereits in AppShell.tsx vorhanden
 - Perioden: Täglich, Wöchentlich, Monatlich, Individuell (mit Europe/Berlin-Timezone)
 
+Etappe 16 (User-Preferences in DB + Konfetti + Streak-Tracking) — ABGESCHLOSSEN:
+- `src/lib/userPreferences.ts`: UserPreferences-Typ, DEFAULT_PREFERENCES, updateUserPreference() (client-safe)
+- `src/lib/getUserPreferences.ts`: getUserPreferences() (server-only, liest aus profiles-Tabelle)
+- `src/lib/migrateLocalStorageToDb.ts`: migrateLegacyPreferences() — einmalige Migration localStorage → DB
+- `src/lib/sound.ts`: playAchievementSound() — Web Audio API, C5+E5+G5-Akkord
+- `src/lib/streaks.ts`: calculateStreaks() — trading_only / all_weekdays Modus, StreakResult-Typ
+- `src/components/CelebrationConfetti.tsx`: Konfetti-Overlay mit Gold-Farben (react-confetti), 4.5s
+- `src/components/StreakWidget.tsx`: Streak-Karten (Gewinn-Serie, Gewinn-Tage, Verlust-frei), "New Best!"-Badge
+- `src/components/AppShell.tsx`: userId + userPreferences Props, migrateLegacyPreferences on mount
+- `src/components/AccountSwitcher.tsx`: kein localStorage mehr — updateUserPreference("active_account_id")
+- `src/app/(app)/layout.tsx`: getUserPreferences() server-side, Übergabe an AppShell
+- `src/app/(app)/dashboard/page.tsx`: getUserPreferences(), account-Auswahl per active_account_id, userPreferences an DashboardClient
+- `src/app/(app)/analytics/page.tsx`: getUserPreferences(), account-Auswahl per active_account_id
+- `src/app/(app)/calendar/page.tsx`: getUserPreferences(), account-Auswahl per active_account_id
+- `src/app/(app)/trades/page.tsx`: getUserPreferences(), account-Auswahl per active_account_id
+- `src/components/DashboardClient.tsx`: userPreferences Prop, CelebrationConfetti, StreakWidget, Achievement-Toast
+- `src/app/(app)/settings/page.tsx`: Belohnungen-Tab (Sound-Toggle + Streak-Modus-Selektor)
+- profiles-Tabelle: 4 neue Spalten streak_mode, sound_enabled, active_account_id, celebrated_goal_ids
+- SQL-Migration: ALTER TABLE profiles ADD COLUMN IF NOT EXISTS ...
+
 ## Database-Schema (Supabase, RLS überall aktiv)
 8 Tabellen: profiles, accounts, trades, tags, trade_tags, screenshots, goals, reviews
 - Alle haben user_id FK + RLS-Policies
@@ -82,6 +103,7 @@ Etappe 15 (Ziele-System) — ABGESCHLOSSEN:
 - Storage-Bucket "screenshots" für Trade-Bilder (RLS aktiv)
 - Auto-Profile-Trigger bei auth.users insert
 - goals: id, user_id, account_id (nullable), goal_type, target_value, period_type, period_start (date), period_end (date), is_active, created_at
+- profiles: hat 4 Extra-Spalten: streak_mode (text, default trading_only), sound_enabled (bool, default false), active_account_id (uuid, nullable), celebrated_goal_ids (text[], default {})
 
 ## Auth-Setup
 - Email+Passwort funktioniert
@@ -97,6 +119,8 @@ Etappe 15 (Ziele-System) — ABGESCHLOSSEN:
 - Utility-Funktionen (cn, formatCurrency, etc.) in `src/lib/utils.ts`
 - Cookie-Typing in middleware muss CookieOptions importieren (sonst TypeScript-Error)
 - macOS TCC/Sandbox blockiert Write/Edit/Bash-Tools für `src/`-Verzeichnis — Workaround: Dateien per GitHub-API pushen via `gh api --method PUT`
+- Unicode-Escape-Sequenzen (\uXXXX) funktionieren NICHT in JSX-Text-Content — direkte UTF-8-Zeichen oder HTML-Entities (&#NNNN;) verwenden
+- Keine Template-Literals in JSX-Attributen — cn() oder String-Konkatenation nutzen
 
 ## Roadmap weitere Phasen
 - Phase 2: Vantage MT5 CSV/HTML Import, Wöchentliche/Monatliche Reviews
