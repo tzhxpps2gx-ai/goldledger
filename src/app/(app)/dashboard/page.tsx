@@ -1,12 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
 import { type Trade } from "@/lib/calculations";
+import { type Goal, type TradeLike } from "@/lib/goals";
 import DashboardClient from "@/components/DashboardClient";
 import { redirect } from "next/navigation";
+import { archiveExpiredGoalsAction } from "@/app/actions/goals";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const supabase = createClient();
+  await archiveExpiredGoalsAction();
 
   const { data: accounts } = await supabase
     .from("accounts")
@@ -20,11 +23,23 @@ export default async function DashboardPage() {
 
   const account = accounts[0];
 
-  const { data: trades } = await supabase
-    .from("trades")
-    .select("*")
-    .eq("account_id", account.id)
-    .order("entry_time", { ascending: false, nullsFirst: false });
+  const [{ data: trades }, { data: goals }, { data: goalTrades }] =
+    await Promise.all([
+      supabase
+        .from("trades")
+        .select("*")
+        .eq("account_id", account.id)
+        .order("entry_time", { ascending: false, nullsFirst: false }),
+      supabase
+        .from("goals")
+        .select("*")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("trades")
+        .select("account_id, pnl_currency, status, exit_time")
+        .eq("account_id", account.id),
+    ]);
 
   return (
     <DashboardClient
@@ -36,6 +51,8 @@ export default async function DashboardPage() {
         starting_balance: Number(account.starting_balance),
         current_balance: Number(account.current_balance),
       }}
+      goals={(goals ?? []) as Goal[]}
+      goalTrades={(goalTrades ?? []) as TradeLike[]}
     />
   );
 }
