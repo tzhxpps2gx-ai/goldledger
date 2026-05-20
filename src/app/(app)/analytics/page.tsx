@@ -2,23 +2,26 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import TagPerformanceClient from "@/components/TagPerformanceClient";
 import type { TagStat } from "@/lib/tags";
+import { getUserPreferences } from "@/lib/getUserPreferences";
 
 export const dynamic = "force-dynamic";
 
 export default async function AnalyticsPage() {
   const supabase = createClient();
 
-  const { data: accounts } = await supabase
-    .from("accounts")
-    .select("*")
-    .eq("is_active", true);
+  const [{ data: accounts }, userPreferences] = await Promise.all([
+    supabase.from("accounts").select("*").eq("is_active", true),
+    getUserPreferences(),
+  ]);
 
   if (!accounts || accounts.length === 0) {
     redirect("/onboarding");
   }
-  const account = accounts[0];
 
-  // Alle geschlossenen Trades des Accounts
+  const account =
+    accounts.find((a) => a.id === userPreferences.active_account_id) ??
+    accounts[0];
+
   const { data: trades } = await supabase
     .from("trades")
     .select("id, pnl_currency, r_multiple")
@@ -28,12 +31,10 @@ export default async function AnalyticsPage() {
   const closedTrades = trades ?? [];
   const tradeIds = closedTrades.map((t) => t.id as string);
 
-  // Tags laden
   const { data: allTags } = await supabase
     .from("tags")
     .select("id, name, category, color");
 
-  // trade_tags für alle geschlossenen Trades laden
   const { data: tradeTags } = tradeIds.length > 0
     ? await supabase
         .from("trade_tags")
@@ -41,13 +42,11 @@ export default async function AnalyticsPage() {
         .in("trade_id", tradeIds)
     : { data: [] };
 
-  // TagStat-Aggregation
   const tagMap = new Map<string, { name: string; category: string; color: string }>();
   for (const tag of allTags ?? []) {
     tagMap.set(tag.id, { name: tag.name, category: tag.category, color: tag.color });
   }
 
-  // trade_id → Trade-Daten
   const tradeDataMap = new Map<string, { pnl: number; r: number | null }>();
   for (const t of closedTrades) {
     tradeDataMap.set(t.id as string, {
@@ -56,7 +55,6 @@ export default async function AnalyticsPage() {
     });
   }
 
-  // Pro Tag aggregieren
   const statAcc = new Map<
     string,
     { tradeIds: Set<string>; totalPnl: number; wins: number; rValues: number[] }
