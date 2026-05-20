@@ -48,7 +48,7 @@ export default function GoalsWidget({
           href="/goals"
           className="text-xs text-gold-400 hover:text-gold-300 font-medium transition"
         >
-          Alle ansehen \u2192
+          Alle ansehen →
         </Link>
       </div>
 
@@ -59,7 +59,7 @@ export default function GoalsWidget({
             href="/goals"
             className="inline-flex items-center gap-1.5 text-xs font-medium text-gold-400 hover:text-gold-300 transition"
           >
-            Erstes Ziel setzen \u2192
+            Erstes Ziel setzen →
           </Link>
         </div>
       ) : (
