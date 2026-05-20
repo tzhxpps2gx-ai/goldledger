@@ -83,7 +83,7 @@ export default function GoalCard({
             </span>
             {achieved && (
               <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-gold-500/20 text-gold-400">
-                Erreicht \u2713
+                Erreicht ✓
               </span>
             )}
             {missed && (
@@ -98,7 +98,7 @@ export default function GoalCard({
           <p className="text-[11px] text-zinc-500 mt-0.5">
             {goal.period_start === goal.period_end
               ? formatDate(goal.period_start)
-              : formatDate(goal.period_start) + " \u2013 " + formatDate(goal.period_end)}
+              : formatDate(goal.period_start) + " – " + formatDate(goal.period_end)}
           </p>
         </div>
 
@@ -165,7 +165,7 @@ export default function GoalCard({
       {deleteConfirming && (
         <div className="flex items-center gap-2 bg-danger/10 border border-danger/20 rounded-xl p-3 mt-1">
           <AlertCircle className="w-4 h-4 text-danger flex-shrink-0" />
-          <span className="text-xs text-danger flex-1">Ziel wirklich l\u00f6schen?</span>
+          <span className="text-xs text-danger flex-1">Ziel wirklich löschen?</span>
           <button
             onClick={onDeleteConfirm}
             disabled={deleting}
