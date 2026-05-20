@@ -93,7 +93,14 @@ export default function GoalDialog({
     setSaving(true);
     setError(null);
 
-    const payload = {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setError("Nicht eingeloggt.");
+      setSaving(false);
+      return;
+    }
+
+    const basePayload = {
       goal_type: goalType,
       target_value: parsed,
       period_type: periodType,
@@ -107,10 +114,12 @@ export default function GoalDialog({
     if (editGoal) {
       ({ error: err } = await supabase
         .from("goals")
-        .update(payload)
+        .update(basePayload)
         .eq("id", editGoal.id));
     } else {
-      ({ error: err } = await supabase.from("goals").insert(payload));
+      ({ error: err } = await supabase
+        .from("goals")
+        .insert({ ...basePayload, user_id: user.id }));
     }
 
     setSaving(false);
