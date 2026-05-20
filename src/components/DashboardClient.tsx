@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   TIME_RANGE_LABELS,
@@ -16,7 +16,17 @@ import {
 import { formatCurrency, formatDateTime, pnlColor, cn } from "@/lib/utils";
 import EquityChart from "@/components/EquityChart";
 import GoalsWidget from "@/components/GoalsWidget";
-import { type Goal, type TradeLike } from "@/lib/goals";
+import StreakWidget from "@/components/StreakWidget";
+import CelebrationConfetti from "@/components/CelebrationConfetti";
+import {
+  type Goal,
+  type TradeLike,
+  getGoalStatus,
+  GOAL_TYPE_LABELS,
+  PERIOD_LABELS,
+} from "@/lib/goals";
+import { type UserPreferences, updateUserPreference } from "@/lib/userPreferences";
+import { playAchievementSound } from "@/lib/sound";
 import {
   TrendingUp,
   TrendingDown,
@@ -35,6 +45,7 @@ export default function DashboardClient({
   account,
   goals,
   goalTrades,
+  userPreferences,
 }: {
   trades: Trade[];
   account: {
@@ -46,25 +57,73 @@ export default function DashboardClient({
   };
   goals: Goal[];
   goalTrades: TradeLike[];
+  userPreferences: UserPreferences;
 }) {
   const [range, setRange] = useState<TimeRange>("today");
+  const [confettiTrigger, setConfettiTrigger] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const celebrationDone = useRef(false);
+
+  useEffect(() => {
+    if (celebrationDone.current) return;
+    celebrationDone.current = true;
+
+    const newlyAchieved = goals.filter((goal) => {
+      const status = getGoalStatus(goal, goalTrades);
+      return (
+        status === "achieved" &&
+        !userPreferences.celebrated_goal_ids.includes(goal.id)
+      );
+    });
+
+    if (newlyAchieved.length === 0) return;
+
+    const first = newlyAchieved[0];
+    const label = GOAL_TYPE_LABELS[first.goal_type];
+    const periodLabel = PERIOD_LABELS[first.period_type];
+    setToastMessage(label + " (" + periodLabel + ")");
+    setConfettiTrigger(true);
+
+    if (userPreferences.sound_enabled) {
+      playAchievementSound();
+    }
+
+    const newIds = [
+      ...userPreferences.celebrated_goal_ids,
+      ...newlyAchieved.map((g) => g.id),
+    ];
+    updateUserPreference("celebrated_goal_ids", newIds);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = useMemo(
     () => filterTradesByRange(trades, range),
     [trades, range]
   );
-
   const stats = useMemo(() => calculateStats(filtered), [filtered]);
   const allTimeStats = useMemo(() => calculateStats(trades), [trades]);
   const equityCurve = useMemo(
     () => buildEquityCurve(filtered, Number(account.starting_balance)),
     [filtered, account.starting_balance]
   );
-
   const recentTrades = useMemo(() => trades.slice(0, 5), [trades]);
 
   return (
     <div className="space-y-6">
+      {toastMessage && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[999] bg-bg-card border border-gold-500/40 text-gold-300 text-sm font-medium px-5 py-3 rounded-2xl shadow-lg shadow-gold-500/10 flex items-center gap-2 pointer-events-none">
+          <span className="text-lg">&#127942;</span>
+          <span>Ziel erreicht: {toastMessage}</span>
+        </div>
+      )}
+
+      <CelebrationConfetti
+        trigger={confettiTrigger}
+        onComplete={() => {
+          setConfettiTrigger(false);
+          setTimeout(() => setToastMessage(null), 800);
+        }}
+      />
+
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
@@ -134,12 +193,14 @@ export default function DashboardClient({
 
       <GoalsWidget goals={goals} trades={goalTrades} currency={account.currency} />
 
+      <StreakWidget trades={trades} mode={userPreferences.streak_mode} />
+
       <div className="bg-bg-card border border-bg-border rounded-2xl p-5 md:p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-base font-semibold text-white">Equity-Kurve</h2>
             <p className="text-xs text-zinc-500 mt-0.5">
-              Kapital im Zeitraum „{TIME_RANGE_LABELS[range]}“
+              Kapital im Zeitraum &#8222;{TIME_RANGE_LABELS[range]}&#8220;
             </p>
           </div>
         </div>
@@ -159,7 +220,7 @@ export default function DashboardClient({
             href="/trades"
             className="text-xs text-gold-400 hover:text-gold-300 font-medium"
           >
-            Alle ansehen →
+            Alle ansehen &#8250;
           </Link>
         </div>
         {recentTrades.length === 0 ? (
