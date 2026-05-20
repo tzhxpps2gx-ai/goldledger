@@ -15,6 +15,8 @@ import {
 } from "@/lib/calculations";
 import { formatCurrency, formatDateTime, pnlColor, cn } from "@/lib/utils";
 import EquityChart from "@/components/EquityChart";
+import GoalsWidget from "@/components/GoalsWidget";
+import { type Goal, type TradeLike } from "@/lib/goals";
 import {
   TrendingUp,
   TrendingDown,
@@ -31,6 +33,8 @@ const TABS: TimeRange[] = ["today", "week", "month", "year", "all"];
 export default function DashboardClient({
   trades,
   account,
+  goals,
+  goalTrades,
 }: {
   trades: Trade[];
   account: {
@@ -40,6 +44,8 @@ export default function DashboardClient({
     starting_balance: number;
     current_balance: number;
   };
+  goals: Goal[];
+  goalTrades: TradeLike[];
 }) {
   const [range, setRange] = useState<TimeRange>("today");
 
@@ -59,14 +65,13 @@ export default function DashboardClient({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
             Dashboard
           </h1>
           <p className="text-zinc-400 text-sm mt-1">
-            {account.name} · {account.broker} ·{" "}
+            {account.name} \u00b7 {account.broker} \u00b7{" "}
             <span className="text-gold-400">
               {formatCurrency(Number(account.current_balance), account.currency)}
             </span>
@@ -74,10 +79,8 @@ export default function DashboardClient({
         </div>
       </div>
 
-      {/* All-Time Performance — 4 Karten + ausklappbare Details */}
       <AllTimeStatsCard stats={allTimeStats} currency={account.currency} />
 
-      {/* Zeitraum-Tabs */}
       <div className="flex gap-1 p-1 bg-bg-card border border-bg-border rounded-xl overflow-x-auto scrollbar-hidden">
         {TABS.map((r) => (
           <button
@@ -95,7 +98,6 @@ export default function DashboardClient({
         ))}
       </div>
 
-      {/* KPI Cards (Zeitraum-spezifisch) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard
           label="P/L"
@@ -108,35 +110,36 @@ export default function DashboardClient({
         />
         <KpiCard
           label="Win Rate"
-          value={`${stats.winRate}%`}
+          value={stats.winRate + "%"}
           subtext={
             stats.closedTrades === 0
               ? "Keine Trades"
-              : `${stats.winningTrades} von ${stats.closedTrades} ${stats.closedTrades === 1 ? "Trade" : "Trades"}`
+              : stats.winningTrades + " von " + stats.closedTrades + (stats.closedTrades === 1 ? " Trade" : " Trades")
           }
           icon={Target}
         />
         <KpiCard
-          label="Ø R-Multiple"
+          label="\u00d8 R-Multiple"
           value={stats.avgR.toFixed(2) + "R"}
           accent={stats.avgR > 0 ? "success" : stats.avgR < 0 ? "danger" : undefined}
           icon={Activity}
         />
         <KpiCard
           label="Profit Factor"
-          value={stats.profitFactor === 999 ? "∞" : stats.profitFactor.toFixed(2)}
+          value={stats.profitFactor === 999 ? "\u221e" : stats.profitFactor.toFixed(2)}
           accent={stats.profitFactor >= 1 ? "success" : stats.profitFactor > 0 ? "danger" : undefined}
           icon={Activity}
         />
       </div>
 
-      {/* Equity Curve */}
+      <GoalsWidget goals={goals} trades={goalTrades} currency={account.currency} />
+
       <div className="bg-bg-card border border-bg-border rounded-2xl p-5 md:p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-base font-semibold text-white">Equity-Kurve</h2>
             <p className="text-xs text-zinc-500 mt-0.5">
-              Kapital im Zeitraum „{TIME_RANGE_LABELS[range]}"
+              Kapital im Zeitraum \u201e{TIME_RANGE_LABELS[range]}\u201c
             </p>
           </div>
         </div>
@@ -149,7 +152,6 @@ export default function DashboardClient({
         )}
       </div>
 
-      {/* Letzte Trades */}
       <div className="bg-bg-card border border-bg-border rounded-2xl overflow-hidden">
         <div className="p-5 md:p-6 border-b border-bg-border flex items-center justify-between">
           <h2 className="text-base font-semibold text-white">Letzte Trades</h2>
@@ -157,7 +159,7 @@ export default function DashboardClient({
             href="/trades"
             className="text-xs text-gold-400 hover:text-gold-300 font-medium"
           >
-            Alle ansehen →
+            Alle ansehen \u2192
           </Link>
         </div>
         {recentTrades.length === 0 ? (
@@ -172,7 +174,7 @@ export default function DashboardClient({
             {recentTrades.map((t) => (
               <Link
                 key={t.id}
-                href={`/trades/${t.id}`}
+                href={"/trades/" + t.id}
                 className="flex items-center justify-between p-4 hover:bg-bg-elevated/50 transition"
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -205,10 +207,10 @@ export default function DashboardClient({
                     {t.pnl_currency != null
                       ? (t.pnl_currency >= 0 ? "+" : "") +
                         formatCurrency(t.pnl_currency, account.currency)
-                      : "—"}
+                      : "\u2014"}
                   </div>
                   <div className="text-[11px] text-zinc-500">
-                    {t.r_multiple != null ? `${t.r_multiple}R` : t.status}
+                    {t.r_multiple != null ? t.r_multiple + "R" : t.status}
                   </div>
                 </div>
               </Link>
@@ -220,9 +222,6 @@ export default function DashboardClient({
   );
 }
 
-/* ===========================================================
-   AllTime Stats Card — 4 schöne KPI-Karten + ausklappbare Details
-   =========================================================== */
 function AllTimeStatsCard({
   stats,
   currency,
@@ -236,7 +235,6 @@ function AllTimeStatsCard({
 
   return (
     <div className="space-y-3">
-      {/* Header-Zeile mit "All Time" Label und Klapp-Button */}
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <div className="w-1.5 h-1.5 rounded-full bg-gold-400 shadow-[0_0_8px_rgba(212,175,55,0.5)]" />
@@ -249,7 +247,7 @@ function AllTimeStatsCard({
           className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-300 transition text-[10px] md:text-[11px] font-medium uppercase tracking-wider"
         >
           <span className="hidden md:inline">
-            {expanded ? "Schließen" : "Mehr Details"}
+            {expanded ? "Schlie\u00dfen" : "Mehr Details"}
           </span>
           <ChevronDown
             className={cn(
@@ -260,14 +258,13 @@ function AllTimeStatsCard({
         </button>
       </div>
 
-      {/* 4 große KPI-Karten — selbe Optik wie die Tab-KPIs unten */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard
           label="Win Rate"
-          value={`${stats.winRate}%`}
+          value={stats.winRate + "%"}
           subtext={
             stats.closedTrades > 0
-              ? `${stats.winningTrades} von ${stats.closedTrades} ${stats.closedTrades === 1 ? "Trade" : "Trades"}`
+              ? stats.winningTrades + " von " + stats.closedTrades + (stats.closedTrades === 1 ? " Trade" : " Trades")
               : undefined
           }
           accent={stats.winRate >= 50 ? "success" : stats.winRate > 0 ? "danger" : undefined}
@@ -283,31 +280,30 @@ function AllTimeStatsCard({
           icon={stats.totalPnl >= 0 ? TrendingUp : TrendingDown}
         />
         <KpiCard
-          label="Ø R-Multiple"
+          label="\u00d8 R-Multiple"
           value={stats.avgR.toFixed(2) + "R"}
           accent={stats.avgR > 0 ? "success" : stats.avgR < 0 ? "danger" : undefined}
           icon={Activity}
         />
         <KpiCard
           label="Trades"
-          value={stats.totalTrades.toString()}
-          subtext={`${stats.closedTrades} geschlossen`}
+          value={String(stats.totalTrades)}
+          subtext={stats.closedTrades + " geschlossen"}
           icon={Hash}
         />
       </div>
 
-      {/* Aufgeklappt: Detail-KPIs in eigener Card */}
       {expanded && (
         <div className="bg-bg-card border border-bg-border rounded-2xl p-4 md:p-5 grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in">
           <DetailStat
             label="Profit Factor"
-            value={stats.profitFactor === 999 ? "∞" : stats.profitFactor.toFixed(2)}
+            value={stats.profitFactor === 999 ? "\u221e" : stats.profitFactor.toFixed(2)}
             accent={stats.profitFactor >= 1 ? "success" : stats.profitFactor > 0 ? "danger" : undefined}
             icon={Zap}
           />
           <DetailStat
             label="Wins / Losses"
-            value={`${stats.winningTrades} / ${stats.losingTrades}`}
+            value={stats.winningTrades + " / " + stats.losingTrades}
             icon={Target}
           />
           <DetailStat
@@ -328,10 +324,6 @@ function AllTimeStatsCard({
   );
 }
 
-/* ===========================================================
-   KpiCard — die schönen großen Karten
-   Wird sowohl für All-Time als auch Tab-KPIs verwendet
-   =========================================================== */
 function KpiCard({
   label,
   value,
@@ -381,9 +373,6 @@ function KpiCard({
   );
 }
 
-/* ===========================================================
-   DetailStat — kleinere Boxen für ausgeklappte Detail-Werte
-   =========================================================== */
 function DetailStat({
   label,
   value,
