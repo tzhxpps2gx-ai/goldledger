@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import AppShell from "@/components/AppShell";
+import { getUserPreferences } from "@/lib/getUserPreferences";
 
 export default async function AppLayout({
   children,
@@ -8,7 +9,6 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const supabase = createClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -17,5 +17,15 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  return <AppShell userEmail={user.email ?? ""}>{children}</AppShell>;
+  const userPreferences = await getUserPreferences();
+
+  return (
+    <AppShell
+      userEmail={user.email ?? ""}
+      userId={user.id}
+      userPreferences={userPreferences}
+    >
+      {children}
+    </AppShell>
+  );
 }
