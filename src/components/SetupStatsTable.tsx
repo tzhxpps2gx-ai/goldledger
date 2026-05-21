@@ -21,6 +21,41 @@ type AnalyticsTrade = {
   pnl_currency: number | null;
 };
 
+function getMetricDisplay(
+  s: SetupStat,
+  key: SortKey,
+  currency: string
+): { value: string; sub: string; positive: boolean | null } {
+  const t = s.count;
+  const tradeStr = t + (t === 1 ? " Trade" : " Trades");
+  const winStr = Math.round(s.winRate) + " % Gewinnrate";
+  const pnlStr = (s.totalPnl >= 0 ? "+" : "") + formatCurrency(s.totalPnl, currency) + " gesamt";
+  const avgStr = "Ø " + (s.avgPnl >= 0 ? "+" : "") + formatCurrency(s.avgPnl, currency) + " pro Trade";
+
+  switch (key) {
+    case "count":
+      return { value: tradeStr, sub: winStr + " · " + pnlStr, positive: null };
+    case "totalPnl":
+      return {
+        value: (s.totalPnl >= 0 ? "+" : "") + formatCurrency(s.totalPnl, currency),
+        sub: tradeStr + " · " + winStr,
+        positive: s.totalPnl >= 0,
+      };
+    case "avgPnl":
+      return {
+        value: (s.avgPnl >= 0 ? "+" : "") + formatCurrency(s.avgPnl, currency),
+        sub: tradeStr + " · " + pnlStr,
+        positive: s.avgPnl >= 0,
+      };
+    case "winRate":
+      return {
+        value: Math.round(s.winRate) + " %",
+        sub: tradeStr + " · " + pnlStr,
+        positive: s.winRate >= 50,
+      };
+  }
+}
+
 export default function SetupStatsTable({
   trades,
   currency,
@@ -48,7 +83,7 @@ export default function SetupStatsTable({
             Noch keine Trades mit Setup-Eintrag.
           </p>
           <p className="text-zinc-600 text-xs mt-2">
-            Trag beim nächsten Trade dein Setup ein (z. B. &#8222;FVG Long&#8220;) — dann siehst du hier, was wirklich funktioniert.
+            Trag beim nächsten Trade dein Setup ein (z. B. &#8222;FVG Long&#8220;) — dann siehst du hier, was wirklich funktioniert.
           </p>
         </div>
       </section>
@@ -59,7 +94,7 @@ export default function SetupStatsTable({
 
   return (
     <section>
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-start justify-between gap-3 mb-4">
         <div>
           <h2 className="text-xs font-semibold text-gold-400 uppercase tracking-wider">
             Setup-Performance
@@ -74,7 +109,7 @@ export default function SetupStatsTable({
       <div className="flex items-center gap-2 flex-wrap mb-3">
         <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium flex items-center gap-1">
           <ArrowUpDown className="w-3 h-3" />
-          Sortieren
+          Sortieren nach
         </span>
         {(Object.keys(SORT_LABELS) as SortKey[]).map((key) => (
           <button
@@ -96,56 +131,38 @@ export default function SetupStatsTable({
         <div className="divide-y divide-bg-border">
           {sorted.map((s) => {
             const pnlPct = Math.min(Math.abs(s.totalPnl) / maxAbsPnl, 1);
-            return (
-              <div key={s.setup} className="px-4 py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-white truncate">{s.setup}</span>
-                      <span className="text-[10px] text-zinc-600 flex-shrink-0">
-                        {s.count} {s.count === 1 ? "Trade" : "Trades"}
-                      </span>
-                    </div>
-                    {/* Win Rate Bar */}
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <div className="flex-1 h-1 bg-bg-elevated rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full"
-                          style={{
-                            width: s.winRate + "%",
-                            backgroundColor: s.winRate >= 50 ? "rgb(34,197,94)" : "rgb(239,68,68)",
-                          }}
-                        />
-                      </div>
-                      <span className="text-[10px] text-zinc-400 flex-shrink-0 w-8 text-right">
-                        {Math.round(s.winRate)}%
-                      </span>
-                    </div>
-                  </div>
+            const isPositive = s.totalPnl >= 0;
+            const metric = getMetricDisplay(s, sortKey, currency);
 
+            return (
+              <div key={s.setup} className="px-4 py-3 space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  {/* Setup-Name */}
+                  <span className="text-sm font-medium text-white truncate">{s.setup}</span>
+
+                  {/* Gewählte Metrik */}
                   <div className="text-right flex-shrink-0">
                     <div
                       className={cn(
                         "text-sm font-semibold",
-                        s.totalPnl >= 0 ? "text-success" : "text-danger"
+                        metric.positive === true
+                          ? "text-success"
+                          : metric.positive === false
+                          ? "text-danger"
+                          : "text-white"
                       )}
                     >
-                      {s.totalPnl >= 0 ? "+" : ""}{formatCurrency(s.totalPnl, currency)}
+                      {metric.value}
                     </div>
-                    <div className="text-[10px] text-zinc-500 mt-0.5">
-                      Ø {s.avgPnl >= 0 ? "+" : ""}{formatCurrency(s.avgPnl, currency)}
-                    </div>
+                    <div className="text-[10px] text-zinc-500">{metric.sub}</div>
                   </div>
                 </div>
 
-                {/* P/L Balken */}
-                <div className="mt-2 h-0.5 bg-bg-elevated rounded-full overflow-hidden">
+                {/* P/L-Balken */}
+                <div className="h-1 bg-bg-elevated rounded-full overflow-hidden">
                   <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: pnlPct * 100 + "%",
-                      backgroundColor: s.totalPnl >= 0 ? "rgba(34,197,94,0.5)" : "rgba(239,68,68,0.5)",
-                    }}
+                    className={cn("h-full rounded-full transition-all", isPositive ? "bg-success/60" : "bg-danger/60")}
+                    style={{ width: (pnlPct * 100).toFixed(1) + "%" }}
                   />
                 </div>
               </div>
