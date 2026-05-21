@@ -88,40 +88,30 @@ Etappe 16 (User-Preferences in DB + Konfetti + Streak-Tracking) — ABGESCHLOSSE
 - `src/components/AppShell.tsx`: userId + userPreferences Props, migrateLegacyPreferences on mount
 - `src/components/AccountSwitcher.tsx`: kein localStorage mehr — updateUserPreference("active_account_id")
 - `src/app/(app)/layout.tsx`: getUserPreferences() server-side, Übergabe an AppShell
-- `src/app/(app)/dashboard/page.tsx`: getUserPreferences(), account-Auswahl per active_account_id, userPreferences an DashboardClient
-- `src/app/(app)/analytics/page.tsx`: getUserPreferences(), account-Auswahl per active_account_id
-- `src/app/(app)/calendar/page.tsx`: getUserPreferences(), account-Auswahl per active_account_id
-- `src/app/(app)/trades/page.tsx`: getUserPreferences(), account-Auswahl per active_account_id
+- Alle Hauptseiten (dashboard, analytics, calendar, trades): getUserPreferences(), account-Auswahl per active_account_id
 - `src/components/DashboardClient.tsx`: userPreferences Prop, CelebrationConfetti, StreakWidget, Achievement-Toast
 - `src/app/(app)/settings/page.tsx`: Belohnungen-Tab (Sound-Toggle + Streak-Modus-Selektor)
 - profiles-Tabelle: 4 neue Spalten streak_mode, sound_enabled, active_account_id, celebrated_goal_ids
-- SQL-Migration: ALTER TABLE profiles ADD COLUMN IF NOT EXISTS ...
 
 Etappe 17 (MT5 Trade Import) — ABGESCHLOSSEN:
 - `src/lib/mt5Parser.ts`: Parser für MT5 HTML + CSV Export
-  - Symbol-Normalisierung: XAUUSDm, XAU/USD, GOLD, GOLDm → XAUUSD
-  - Doppeltes "Price"-Header-Problem (openPrice vs closePrice)
-  - Zahlenformat: 1,234.56 (Englisch) und 1.234,56 (Deutsch)
-  - Datumsformate: YYYY.MM.DD, DD.MM.YYYY, YYYY-MM-DD
-  - SKIP_TYPES: balance, deposit, withdrawal, credit, correction, bonus, rebate, transfer
-  - Offene Positionen: exitTime=null, exitPrice=null
-  - ParseResult: trades[], warnings[], accountCurrency, brokerName
 - `src/lib/__tests__/mt5Parser.test.ts`: 51 Tests (Vitest + jsdom) — alle grün
-- `vitest.config.ts` + devDependencies (vitest 2.x, jsdom 25.x)
-- DB-Migration (in Supabase SQL-Editor ausgeführt):
-  - ALTER TABLE trades ADD COLUMN IF NOT EXISTS broker_ticket_id text
-  - ALTER TABLE trades ADD COLUMN IF NOT EXISTS imported_at timestamptz
-  - CREATE UNIQUE INDEX IF NOT EXISTS trades_broker_ticket_id_account_id_key ON trades(broker_ticket_id, account_id) WHERE broker_ticket_id IS NOT NULL
-- `src/lib/calculations.ts`: Trade-Typ erweitert (broker_ticket_id?, imported_at?)
-- `src/app/(app)/trades/import/page.tsx`: Server-Komponente, lädt Accounts + getUserPreferences
-- `src/components/ImportClient.tsx`: 4-Phasen-Import-UI
-  - Phase 1: Drag-Drop Zone + Datei-Input + Account-Selektor
-  - Phase 2: Parsing + Duplicate Detection (Supabase-Query auf broker_ticket_id)
-  - Phase 3: Preview-Tabelle mit Checkboxen, Schnellaktionen (Alle/Abwählen/Nur Neue), Warnungen
-  - Phase 4: Ergebnis-Karte (Erfolg/Teilweise) + Navigationsbuttons
-  - Batch-Insert mit upsert + returning für echte Duplikat-Erkennung
-- `src/components/TradesListClient.tsx`: Import-Button (Outline) + MT5-Badge in Zeilen
-- `src/app/(app)/trades/[id]/page.tsx`: Zeiten-Sektion mit imported_at + broker_ticket_id
+- DB-Migration: broker_ticket_id (text), imported_at (timestamptz), UNIQUE INDEX auf (broker_ticket_id, account_id)
+- `src/app/(app)/trades/import/page.tsx`: Server-Komponente
+- `src/components/ImportClient.tsx`: 4-Phasen-Import-UI (Upload → Parse → Vorschau → Ergebnis)
+- `src/components/TradesListClient.tsx`: Import-Button + MT5-Badge in Zeilen
+- `src/app/(app)/trades/[id]/page.tsx`: imported_at + broker_ticket_id in Detailansicht
+- Ausstehend: MT5-Export-Datei aus Vantage (User konnte noch nicht exportieren → erinnern!)
+
+Etappe 18 (Erweiterte Analytics) — ABGESCHLOSSEN:
+- `src/lib/timeStats.ts`: calculateHourlyHeatmap(), findBestWorstHour(), Typen HeatmapCell/HeatmapGrid/BestWorstHour
+- `src/lib/setupStats.ts`: calculateSetupStats(), Typ SetupStat
+- `src/app/(app)/analytics/page.tsx`: erweitert — berechnet Insights server-side, reicht Trades an Client-Komponenten
+- `src/components/AnalyticsInsights.tsx`: 3 Insight-Cards (Beste/Schlechteste Stunde, Bestes Setup) mit Empty-States
+- `src/components/HourlyHeatmap.tsx`: 5×24 Heatmap (Mo-Fr × 0-23 Uhr), Toggle P/L/Win Rate/Anzahl, Hover-Tooltip (fixed), Klick → Modal mit Trade-Liste
+- `src/components/SetupStatsTable.tsx`: Setup-Tabelle sortierbar (Total P/L/Ø P/L/Trades/Win Rate), P/L-Balken, Win-Rate-Bar
+- Analytics-Layout: Insights → Tag-Performance → Zeit-Heatmap → Setup-Tabelle → Platzhalter
+- Zeitzone: Europe/Berlin (sv-SE toLocaleString Trick für zuverlässige Konvertierung)
 
 ## Database-Schema (Supabase, RLS überall aktiv)
 8 Tabellen: profiles, accounts, trades, tags, trade_tags, screenshots, goals, reviews
@@ -150,6 +140,7 @@ Etappe 17 (MT5 Trade Import) — ABGESCHLOSSEN:
 - macOS TCC/Sandbox blockiert Write/Edit/Bash-Tools für `src/`-Verzeichnis — Workaround: Dateien per GitHub-API pushen via `gh api --method PUT`
 - Unicode-Escape-Sequenzen (\uXXXX) funktionieren NICHT in JSX-Text-Content — direkte UTF-8-Zeichen oder HTML-Entities (&#NNNN;) verwenden
 - Keine Template-Literals in JSX-Attributen — cn() oder String-Konkatenation nutzen
+- Zeitzone Europe/Berlin: new Date(isoString).toLocaleString("sv-SE", { timeZone: "Europe/Berlin" }) → gibt "YYYY-MM-DD HH:MM:SS" zurück, dann new Date(datePart + "T" + timePart) für lokale Parts
 
 ## Roadmap weitere Phasen
 - Phase 2: Wöchentliche/Monatliche Reviews
