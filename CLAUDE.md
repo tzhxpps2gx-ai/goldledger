@@ -12,6 +12,7 @@ Vorher gabs viele Probleme mit kopierten Code-Snippets (Template-Literal-Fehler 
 - Vercel auto-deployment vom GitHub main-branch
 - Recharts für Charts, Lucide-React für Icons
 - react-confetti (6.x) für Konfetti-Overlay
+- Vitest 2.x + jsdom 25.x für Unit-Tests (Parser-Logik)
 
 ## Wichtige URLs
 - Production: https://goldledger-fi24.vercel.app
@@ -96,10 +97,38 @@ Etappe 16 (User-Preferences in DB + Konfetti + Streak-Tracking) — ABGESCHLOSSE
 - profiles-Tabelle: 4 neue Spalten streak_mode, sound_enabled, active_account_id, celebrated_goal_ids
 - SQL-Migration: ALTER TABLE profiles ADD COLUMN IF NOT EXISTS ...
 
+Etappe 17 (MT5 Trade Import) — ABGESCHLOSSEN:
+- `src/lib/mt5Parser.ts`: Parser für MT5 HTML + CSV Export
+  - Symbol-Normalisierung: XAUUSDm, XAU/USD, GOLD, GOLDm → XAUUSD
+  - Doppeltes "Price"-Header-Problem (openPrice vs closePrice)
+  - Zahlenformat: 1,234.56 (Englisch) und 1.234,56 (Deutsch)
+  - Datumsformate: YYYY.MM.DD, DD.MM.YYYY, YYYY-MM-DD
+  - SKIP_TYPES: balance, deposit, withdrawal, credit, correction, bonus, rebate, transfer
+  - Offene Positionen: exitTime=null, exitPrice=null
+  - ParseResult: trades[], warnings[], accountCurrency, brokerName
+- `src/lib/__tests__/mt5Parser.test.ts`: 51 Tests (Vitest + jsdom) — alle grün
+- `vitest.config.ts` + devDependencies (vitest 2.x, jsdom 25.x)
+- DB-Migration (in Supabase SQL-Editor ausgeführt):
+  - ALTER TABLE trades ADD COLUMN IF NOT EXISTS broker_ticket_id text
+  - ALTER TABLE trades ADD COLUMN IF NOT EXISTS imported_at timestamptz
+  - CREATE UNIQUE INDEX IF NOT EXISTS trades_broker_ticket_id_account_id_key ON trades(broker_ticket_id, account_id) WHERE broker_ticket_id IS NOT NULL
+- `src/lib/calculations.ts`: Trade-Typ erweitert (broker_ticket_id?, imported_at?)
+- `src/app/(app)/trades/import/page.tsx`: Server-Komponente, lädt Accounts + getUserPreferences
+- `src/components/ImportClient.tsx`: 4-Phasen-Import-UI
+  - Phase 1: Drag-Drop Zone + Datei-Input + Account-Selektor
+  - Phase 2: Parsing + Duplicate Detection (Supabase-Query auf broker_ticket_id)
+  - Phase 3: Preview-Tabelle mit Checkboxen, Schnellaktionen (Alle/Abwählen/Nur Neue), Warnungen
+  - Phase 4: Ergebnis-Karte (Erfolg/Teilweise) + Navigationsbuttons
+  - Batch-Insert mit upsert + returning für echte Duplikat-Erkennung
+- `src/components/TradesListClient.tsx`: Import-Button (Outline) + MT5-Badge in Zeilen
+- `src/app/(app)/trades/[id]/page.tsx`: Zeiten-Sektion mit imported_at + broker_ticket_id
+
 ## Database-Schema (Supabase, RLS überall aktiv)
 8 Tabellen: profiles, accounts, trades, tags, trade_tags, screenshots, goals, reviews
 - Alle haben user_id FK + RLS-Policies
 - trades hat exchange_rate-Spalte (default 1.0) für EUR/USD-Konvertierung
+- trades hat broker_ticket_id (text, nullable) + imported_at (timestamptz, nullable)
+- UNIQUE INDEX auf (broker_ticket_id, account_id) WHERE broker_ticket_id IS NOT NULL
 - Storage-Bucket "screenshots" für Trade-Bilder (RLS aktiv)
 - Auto-Profile-Trigger bei auth.users insert
 - goals: id, user_id, account_id (nullable), goal_type, target_value, period_type, period_start (date), period_end (date), is_active, created_at
@@ -123,6 +152,6 @@ Etappe 16 (User-Preferences in DB + Konfetti + Streak-Tracking) — ABGESCHLOSSE
 - Keine Template-Literals in JSX-Attributen — cn() oder String-Konkatenation nutzen
 
 ## Roadmap weitere Phasen
-- Phase 2: Vantage MT5 CSV/HTML Import, Wöchentliche/Monatliche Reviews
+- Phase 2: Wöchentliche/Monatliche Reviews
 - Phase 3: Pre-Trading-Checkliste, Disziplin-Score, PDF-Export
 - Phase 4: Capacitor iOS-App, MT5-EA-Bridge für Realtime-Trade-Sync
