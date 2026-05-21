@@ -1,8 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import TagPerformanceClient from "@/components/TagPerformanceClient";
+import AnalyticsInsights from "@/components/AnalyticsInsights";
+import HourlyHeatmap from "@/components/HourlyHeatmap";
+import SetupStatsTable from "@/components/SetupStatsTable";
 import type { TagStat } from "@/lib/tags";
 import { getUserPreferences } from "@/lib/getUserPreferences";
+import { calculateHourlyHeatmap, findBestWorstHour } from "@/lib/timeStats";
+import { calculateSetupStats } from "@/lib/setupStats";
 
 export const dynamic = "force-dynamic";
 
@@ -24,13 +29,14 @@ export default async function AnalyticsPage() {
 
   const { data: trades } = await supabase
     .from("trades")
-    .select("id, pnl_currency, r_multiple")
+    .select("id, symbol, direction, pnl_currency, r_multiple, entry_time, setup")
     .eq("account_id", account.id)
     .eq("status", "closed");
 
   const closedTrades = trades ?? [];
   const tradeIds = closedTrades.map((t) => t.id as string);
 
+  // Tag-Stats (unveraendert)
   const { data: allTags } = await supabase
     .from("tags")
     .select("id, name, category, color");
@@ -65,7 +71,6 @@ export default async function AnalyticsPage() {
     const tradeId = tt.trade_id as string;
     const tData = tradeDataMap.get(tradeId);
     if (!tData) continue;
-
     if (!statAcc.has(tagId)) {
       statAcc.set(tagId, { tradeIds: new Set(), totalPnl: 0, wins: 0, rValues: [] });
     }
@@ -78,7 +83,7 @@ export default async function AnalyticsPage() {
     }
   }
 
-  const stats: TagStat[] = [];
+  const tagStats: TagStat[] = [];
   for (const [tagId, acc] of statAcc) {
     const meta = tagMap.get(tagId);
     if (!meta) continue;
@@ -87,7 +92,7 @@ export default async function AnalyticsPage() {
       acc.rValues.length > 0
         ? acc.rValues.reduce((s, r) => s + r, 0) / acc.rValues.length
         : null;
-    stats.push({
+    tagStats.push({
       id: tagId,
       name: meta.name,
       category: meta.category,
@@ -99,24 +104,55 @@ export default async function AnalyticsPage() {
     });
   }
 
+  // Neue Analytics: Heatmap-Insights + Setup
+  const typedTrades = closedTrades as Array<{
+    id: string;
+    symbol: string;
+    direction: "long" | "short";
+    pnl_currency: number | null;
+    r_multiple: number | null;
+    entry_time: string | null;
+    setup: string | null;
+  }>;
+
+  const { grid } = calculateHourlyHeatmap(typedTrades);
+  const { best: bestHour, worst: worstHour } = findBestWorstHour(grid);
+  const setupStats = calculateSetupStats(typedTrades);
+  const bestSetup = [...setupStats].sort((a, b) => b.totalPnl - a.totalPnl)[0] ?? null;
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-8">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
           Analyse
         </h1>
         <p className="text-zinc-400 text-sm mt-1">
-          Performance nach Tags — basierend auf {closedTrades.length}{" "}
-          {closedTrades.length === 1 ? "geschlossenem Trade" : "geschlossenen Trades"}.
+          {closedTrades.length}{" "}
+          {closedTrades.length === 1 ? "geschlossener Trade" : "geschlossene Trades"}
         </p>
       </div>
+
+      <AnalyticsInsights
+        bestHour={bestHour}
+        worstHour={worstHour}
+        bestSetup={bestSetup}
+        currency={account.currency}
+      />
 
       <div>
         <h2 className="text-xs font-semibold text-gold-400 uppercase tracking-wider mb-3">
           Tag-Performance
         </h2>
-        <TagPerformanceClient stats={stats} currency={account.currency} />
+        <TagPerformanceClient stats={tagStats} currency={account.currency} />
       </div>
+
+      <HourlyHeatmap trades={typedTrades} currency={account.currency} />
+
+      <SetupStatsTable trades={typedTrades} currency={account.currency} />
+
+      <p className="text-center text-xs text-zinc-600 pb-4">
+        Weitere Auswertungen folgen&#8230;
+      </p>
     </div>
   );
 }
