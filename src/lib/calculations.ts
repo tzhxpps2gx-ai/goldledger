@@ -104,6 +104,8 @@ export type Trade = {
   entry_time: string | null;
   exit_time: string | null;
   exchange_rate?: number | null;
+  imported_at?: string | null;
+  broker_ticket_id?: string | null;
 };
 
 export type Stats = {
