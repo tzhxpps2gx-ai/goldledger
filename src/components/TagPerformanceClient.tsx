@@ -22,6 +22,39 @@ const CATEGORY_LABELS: Record<string, string> = {
   custom: "Sonstige",
 };
 
+function getMetricDisplay(
+  stat: TagStat,
+  key: SortKey,
+  currency: string
+): { value: string; sub: string; positive: boolean | null } {
+  switch (key) {
+    case "tradeCount":
+      return {
+        value: stat.tradeCount + " Trades",
+        sub: stat.winRate.toFixed(0) + " % Win",
+        positive: null,
+      };
+    case "totalPnl":
+      return {
+        value: (stat.totalPnl >= 0 ? "+" : "") + formatCurrency(stat.totalPnl, currency),
+        sub: stat.tradeCount + " Trades",
+        positive: stat.totalPnl >= 0,
+      };
+    case "winRate":
+      return {
+        value: stat.winRate.toFixed(0) + " %",
+        sub: stat.tradeCount + " Trades",
+        positive: stat.winRate >= 50,
+      };
+    case "avgR":
+      return {
+        value: stat.avgR != null ? stat.avgR.toFixed(2) + "R" : "—",
+        sub: stat.tradeCount + " Trades",
+        positive: stat.avgR != null ? stat.avgR >= 0 : null,
+      };
+  }
+}
+
 export default function TagPerformanceClient({
   stats,
   currency,
@@ -84,11 +117,12 @@ export default function TagPerformanceClient({
           {sorted.map((stat) => {
             const pnlPct = Math.abs(stat.totalPnl) / maxAbsPnl;
             const isPositive = stat.totalPnl >= 0;
+            const metric = getMetricDisplay(stat, sortKey, currency);
 
             return (
-              <div key={stat.id} className="p-4 space-y-3">
-                {/* Header-Zeile */}
+              <div key={stat.id} className="px-4 py-3 space-y-2">
                 <div className="flex items-center justify-between gap-3">
+                  {/* Tag-Name + Kategorie */}
                   <div className="flex items-center gap-2 min-w-0">
                     <div
                       className="w-2.5 h-2.5 rounded-full flex-shrink-0"
@@ -97,56 +131,35 @@ export default function TagPerformanceClient({
                     <span className="text-sm font-medium text-white truncate">
                       {stat.name}
                     </span>
-                    <span className="text-[10px] text-zinc-600 uppercase tracking-wider hidden sm:block flex-shrink-0">
+                    <span className="text-[10px] text-zinc-600 uppercase tracking-wider flex-shrink-0">
                       {CATEGORY_LABELS[stat.category] ?? stat.category}
                     </span>
                   </div>
-                  <div className="flex items-center gap-4 flex-shrink-0 text-right">
-                    <div className="hidden sm:block">
-                      <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Trades</div>
-                      <div className="text-sm font-medium text-white">{stat.tradeCount}</div>
+
+                  {/* Gewählte Metrik */}
+                  <div className="text-right flex-shrink-0">
+                    <div
+                      className={cn(
+                        "text-sm font-semibold",
+                        metric.positive === true
+                          ? "text-success"
+                          : metric.positive === false
+                          ? "text-danger"
+                          : "text-white"
+                      )}
+                    >
+                      {metric.value}
                     </div>
-                    <div className="hidden sm:block">
-                      <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Win-Rate</div>
-                      <div className="text-sm font-medium text-white">{stat.winRate.toFixed(0)} %</div>
-                    </div>
-                    <div className="hidden sm:block">
-                      <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Ø R</div>
-                      <div className="text-sm font-medium text-white">
-                        {stat.avgR != null ? stat.avgR.toFixed(2) + "R" : "—"}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] text-zinc-500 uppercase tracking-wider">P/L</div>
-                      <div
-                        className={cn(
-                          "text-sm font-semibold",
-                          isPositive ? "text-success" : "text-danger"
-                        )}
-                      >
-                        {isPositive ? "+" : ""}
-                        {formatCurrency(stat.totalPnl, currency)}
-                      </div>
-                    </div>
+                    <div className="text-[10px] text-zinc-500">{metric.sub}</div>
                   </div>
                 </div>
 
                 {/* P/L-Balken */}
-                <div className="h-1.5 bg-bg-elevated rounded-full overflow-hidden">
+                <div className="h-1 bg-bg-elevated rounded-full overflow-hidden">
                   <div
-                    className={cn(
-                      "h-full rounded-full transition-all",
-                      isPositive ? "bg-success" : "bg-danger"
-                    )}
+                    className={cn("h-full rounded-full transition-all", isPositive ? "bg-success/60" : "bg-danger/60")}
                     style={{ width: (pnlPct * 100).toFixed(1) + "%" }}
                   />
-                </div>
-
-                {/* Mobile: Zusatz-Stats */}
-                <div className="flex gap-4 sm:hidden text-xs text-zinc-400">
-                  <span>{stat.tradeCount} Trades</span>
-                  <span>{stat.winRate.toFixed(0)} % Wins</span>
-                  {stat.avgR != null && <span>Ø {stat.avgR.toFixed(2)}R</span>}
                 </div>
               </div>
             );
