@@ -27,29 +27,35 @@ function getMetricDisplay(
   key: SortKey,
   currency: string
 ): { value: string; sub: string; positive: boolean | null } {
+  const t = stat.tradeCount;
+  const tradeStr = t + (t === 1 ? " Trade" : " Trades");
+  const winStr = stat.winRate.toFixed(0) + " % Gewinnrate";
+  const pnlStr = (stat.totalPnl >= 0 ? "+" : "") + formatCurrency(stat.totalPnl, currency) + " gesamt";
+  const rStr = stat.avgR != null ? "Ø " + stat.avgR.toFixed(2) + "R" : "";
+
   switch (key) {
     case "tradeCount":
       return {
-        value: stat.tradeCount + " Trades",
-        sub: stat.winRate.toFixed(0) + " % Win",
+        value: tradeStr,
+        sub: winStr + (rStr ? " · " + rStr : ""),
         positive: null,
       };
     case "totalPnl":
       return {
         value: (stat.totalPnl >= 0 ? "+" : "") + formatCurrency(stat.totalPnl, currency),
-        sub: stat.tradeCount + " Trades",
+        sub: tradeStr + " · " + winStr,
         positive: stat.totalPnl >= 0,
       };
     case "winRate":
       return {
         value: stat.winRate.toFixed(0) + " %",
-        sub: stat.tradeCount + " Trades",
+        sub: tradeStr + " · " + pnlStr,
         positive: stat.winRate >= 50,
       };
     case "avgR":
       return {
         value: stat.avgR != null ? stat.avgR.toFixed(2) + "R" : "—",
-        sub: stat.tradeCount + " Trades",
+        sub: tradeStr + " · " + winStr,
         positive: stat.avgR != null ? stat.avgR >= 0 : null,
       };
   }
