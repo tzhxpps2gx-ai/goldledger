@@ -2,14 +2,14 @@
 
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
-import type { BestWorstHour, SetupStat } from "@/lib/timeStats";
-import type { SetupStat as SS } from "@/lib/setupStats";
+import type { BestWorstHour } from "@/lib/timeStats";
+import type { SetupStat } from "@/lib/setupStats";
 import { DAY_LABELS } from "@/lib/timeStats";
 
 type Props = {
   bestHour: BestWorstHour | null;
   worstHour: BestWorstHour | null;
-  bestSetup: SS | null;
+  bestSetup: SetupStat | null;
   currency: string;
 };
 
