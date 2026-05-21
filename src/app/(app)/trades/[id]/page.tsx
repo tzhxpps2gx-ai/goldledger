@@ -141,7 +141,7 @@ export default async function TradeDetailPage({
       )}
 
       {/* Zeiten */}
-      {(trade.entry_time || trade.exit_time) && (
+      {(trade.entry_time || trade.exit_time || trade.imported_at) && (
         <div className="bg-bg-card border border-bg-border rounded-2xl p-5 md:p-6 space-y-3">
           <h3 className="text-xs font-semibold text-gold-400 uppercase tracking-wider">
             Zeiten
@@ -151,6 +151,12 @@ export default async function TradeDetailPage({
           )}
           {trade.exit_time && (
             <Field label="Exit" value={formatDateTime(trade.exit_time)} />
+          )}
+          {trade.imported_at && (
+            <Field label="Importiert am" value={formatDateTime(trade.imported_at)} />
+          )}
+          {trade.broker_ticket_id && (
+            <Field label="MT5-Ticket" value={String(trade.broker_ticket_id)} />
           )}
         </div>
       )}
