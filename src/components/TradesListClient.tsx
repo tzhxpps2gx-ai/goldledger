@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { type Trade } from "@/lib/calculations";
 import { formatCurrency, formatDateTime, pnlColor, cn } from "@/lib/utils";
-import { Plus, Search, X, Filter as FilterIcon, Tag as TagIcon } from "lucide-react";
+import { Plus, Search, X, Filter as FilterIcon, Tag as TagIcon, Upload } from "lucide-react";
 import TagChips from "@/components/TagChips";
 import type { Tag } from "@/lib/tags";
 
@@ -123,13 +123,22 @@ export default function TradesListClient({
             )}
           </p>
         </div>
-        <Link
-          href="/trades/new"
-          className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-bg font-semibold rounded-xl transition-all shadow-md shadow-gold-500/20 hover:shadow-gold-500/40 hover:-translate-y-0.5 active:translate-y-0 group"
-        >
-          <Plus className="w-4 h-4 transition-transform group-hover:rotate-90" />
-          Neuer Trade
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/trades/import"
+            className="inline-flex items-center gap-1.5 px-3 py-2 border border-bg-border text-zinc-400 hover:text-white hover:border-zinc-600 rounded-xl text-xs font-medium transition active:scale-95"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Import</span>
+          </Link>
+          <Link
+            href="/trades/new"
+            className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-bg font-semibold rounded-xl transition-all shadow-md shadow-gold-500/20 hover:shadow-gold-500/40 hover:-translate-y-0.5 active:translate-y-0 group"
+          >
+            <Plus className="w-4 h-4 transition-transform group-hover:rotate-90" />
+            Neuer Trade
+          </Link>
+        </div>
       </div>
 
       {/* Such-Bar */}
@@ -299,11 +308,14 @@ export default function TradesListClient({
                     {t.direction === "long" ? "Long" : "Short"}
                   </div>
                   <div className="min-w-0">
-                    <div className="text-sm font-medium text-white">
-                      {t.symbol}{" "}
+                    <div className="flex items-center gap-1.5 text-sm font-medium text-white flex-wrap">
+                      <span>{t.symbol}</span>
                       {(t as any).setup && (
-                        <span className="text-zinc-500 font-normal">
-                          · {(t as any).setup}
+                        <span className="text-zinc-500 font-normal">· {(t as any).setup}</span>
+                      )}
+                      {(t as any).imported_at && (
+                        <span className="text-[9px] font-bold text-gold-400/60 border border-gold-400/25 rounded px-1 py-px uppercase tracking-wider leading-none">
+                          MT5
                         </span>
                       )}
                     </div>
