@@ -9,7 +9,7 @@ import type { ReviewTemplate } from "@/lib/reviewTemplates";
 import type { Review, ReviewStats, ReviewTrade } from "@/lib/reviews";
 import { getPeriodLabel } from "@/lib/reviews";
 import { updateReviewAnswersAction, submitReviewAction } from "@/app/actions/reviews";
-import { Check, Loader2, Copy, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Check, Loader2, Copy, ExternalLink, ChevronDown } from "lucide-react";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -130,6 +130,11 @@ export default function ReviewEditorClient({
     saveTimer.current = setTimeout(() => saveNow(next), 1000);
   }, [saveNow]);
 
+  async function handleSaveAndBack() {
+    await saveNow(latestAnswers.current);
+    router.push("/reviews");
+  }
+
   async function handleSubmit() {
     setSubmitting(true);
     const { error } = await submitReviewAction(review.id, latestAnswers.current);
@@ -138,8 +143,8 @@ export default function ReviewEditorClient({
       router.push("/reviews/" + review.id);
     } else {
       setSaveStatus("error");
+      setSubmitting(false);
     }
-    setSubmitting(false);
   }
 
   function handleCopyId(tradeId: string) {
@@ -226,6 +231,13 @@ export default function ReviewEditorClient({
   return (
     <>
       <div className="max-w-4xl mx-auto">
+        {/* Zurück-Link */}
+        <Link href="/reviews"
+          className="inline-flex items-center gap-1 text-xs text-zinc-500 hover:text-white transition mb-4">
+          <ArrowLeft className="w-3 h-3" />
+          Alle Reviews
+        </Link>
+
         <div className="flex items-start justify-between gap-3 mb-6">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -282,13 +294,15 @@ export default function ReviewEditorClient({
 
             <div className="flex items-center gap-3 pb-8">
               <button
-                onClick={() => saveNow(latestAnswers.current)}
+                type="button"
+                onClick={handleSaveAndBack}
                 disabled={saveStatus === "saving"}
                 className="px-4 py-2 border border-bg-border text-zinc-400 hover:text-white hover:border-zinc-600 rounded-xl text-sm font-medium transition disabled:opacity-50"
               >
                 Als Entwurf speichern
               </button>
               <button
+                type="button"
                 onClick={() => setShowConfirm(true)}
                 className="px-5 py-2 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-bg font-semibold rounded-xl transition-all shadow-md shadow-gold-500/20 text-sm"
               >
@@ -303,9 +317,9 @@ export default function ReviewEditorClient({
         </div>
 
         <div className="lg:hidden border-t border-bg-border mt-2 pt-4">
-          <button onClick={() => setSidebarOpen((v) => !v)}
+          <button type="button" onClick={() => setSidebarOpen((v) => !v)}
             className="flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition mb-3">
-            {sidebarOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            <ChevronDown className={cn("w-4 h-4 transition-transform", sidebarOpen && "rotate-180")} />
             Zeitraum-Stats {sidebarOpen ? "ausblenden" : "anzeigen"}
           </button>
           {sidebarOpen && sidebar}
@@ -314,19 +328,20 @@ export default function ReviewEditorClient({
 
       {showConfirm && (
         <>
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40" onClick={() => setShowConfirm(false)} />
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40"
+            onClick={() => !submitting && setShowConfirm(false)} />
           <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 md:inset-auto md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-sm z-50">
-            <div className="bg-bg-card border border-bg-border rounded-2xl p-6">
+            <div className="bg-bg-card border border-bg-border rounded-2xl p-6 shadow-xl">
               <h3 className="text-base font-bold text-white mb-2">Review abschlie&#223;en?</h3>
               <p className="text-sm text-zinc-400 mb-5">
                 Du kannst es danach noch einmal &#246;ffnen, aber so dokumentierst du den aktuellen Stand als abgeschlossen.
               </p>
               <div className="flex gap-3">
-                <button onClick={() => setShowConfirm(false)}
-                  className="flex-1 px-4 py-2 border border-bg-border text-zinc-400 hover:text-white rounded-xl text-sm font-medium transition">
+                <button type="button" onClick={() => setShowConfirm(false)} disabled={submitting}
+                  className="flex-1 px-4 py-2 border border-bg-border text-zinc-400 hover:text-white rounded-xl text-sm font-medium transition disabled:opacity-40">
                   Abbrechen
                 </button>
-                <button onClick={handleSubmit} disabled={submitting}
+                <button type="button" onClick={handleSubmit} disabled={submitting}
                   className="flex-1 px-4 py-2 bg-gradient-to-r from-gold-500 to-gold-600 text-bg font-semibold rounded-xl text-sm transition disabled:opacity-50 flex items-center justify-center gap-2">
                   {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   Abschlie&#223;en
