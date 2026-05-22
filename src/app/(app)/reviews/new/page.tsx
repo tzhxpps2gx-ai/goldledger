@@ -36,26 +36,14 @@ export default async function NewReviewPage({
       period_end: periodEnd,
       answers: {},
       status: "draft",
+      updated_at: new Date().toISOString(),
     })
     .select()
     .single();
 
   if (insertError || !newReview) {
-    // Fehler direkt anzeigen statt silent redirect
-    return (
-      <div className="max-w-xl mx-auto mt-12 p-6 bg-bg-card border border-danger/40 rounded-2xl">
-        <h2 className="text-lg font-bold text-danger mb-3">Fehler beim Anlegen des Reviews</h2>
-        <p className="text-sm text-zinc-300 mb-2">
-          {insertError?.message ?? "Unbekannter Fehler – kein Review-Objekt zurückgegeben"}
-        </p>
-        <pre className="text-[11px] text-zinc-500 bg-bg-elevated rounded-xl p-3 overflow-x-auto whitespace-pre-wrap">
-          {JSON.stringify(insertError, null, 2)}
-        </pre>
-        <a href="/reviews" className="mt-4 inline-block text-sm text-gold-400 hover:underline">
-          ← Zurück zu Reviews
-        </a>
-      </div>
-    );
+    console.error("Review insert error:", insertError?.message);
+    redirect("/reviews?error=create_failed");
   }
 
   const userPreferences = await getUserPreferences();
