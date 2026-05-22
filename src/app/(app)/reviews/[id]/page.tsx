@@ -73,7 +73,6 @@ export default async function ReviewDetailPage({ params }: { params: { id: strin
     return (
       <ReviewEditorClient
         review={r}
-        userId={user.id}
         periodType={r.period_type}
         periodStart={r.period_start}
         periodEnd={r.period_end}
