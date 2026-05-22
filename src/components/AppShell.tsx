@@ -12,6 +12,7 @@ import {
   LogOut,
   BarChart3,
   Target,
+  BookOpen,
   Menu,
   X,
 } from "lucide-react";
@@ -28,6 +29,7 @@ const desktopNav = [
   { href: "/trades", label: "Trades", icon: List },
   { href: "/analytics", label: "Analyse", icon: BarChart3 },
   { href: "/goals", label: "Ziele", icon: Target },
+  { href: "/reviews", label: "Reviews", icon: BookOpen },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
