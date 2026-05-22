@@ -10,11 +10,12 @@ import {
 import type { Review, ReviewTrade } from "@/lib/reviews";
 import { getUserPreferences } from "@/lib/getUserPreferences";
 import ReviewEditorClient from "@/components/ReviewEditorClient";
+import ReviewReopenButton from "@/components/ReviewReopenButton";
+import ReviewDeleteButton from "@/components/ReviewDeleteButton";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils";
 import { ArrowLeft } from "lucide-react";
-import ReviewReopenButton from "@/components/ReviewReopenButton";
 
 export const dynamic = "force-dynamic";
 
@@ -91,9 +92,7 @@ export default async function ReviewDetailPage({ params }: { params: { id: strin
   const tradeMap = new Map<string, { symbol: string }>();
   if (refIds.length > 0) {
     const { data: refTrades } = await supabase
-      .from("trades")
-      .select("id, symbol")
-      .in("id", refIds);
+      .from("trades").select("id, symbol").in("id", refIds);
     for (const t of refTrades ?? []) {
       tradeMap.set(t.id as string, { symbol: t.symbol as string });
     }
@@ -122,7 +121,10 @@ export default async function ReviewDetailPage({ params }: { params: { id: strin
           <h1 className="text-xl font-bold text-white mt-1">{template.title}</h1>
           <p className="text-zinc-500 text-sm">{formatDate(r.period_start)} &#8211; {formatDate(r.period_end)}</p>
         </div>
-        <ReviewReopenButton reviewId={r.id} />
+        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+          <ReviewReopenButton reviewId={r.id} />
+          <ReviewDeleteButton reviewId={r.id} />
+        </div>
       </div>
 
       <div className="bg-bg-card border border-bg-border rounded-2xl p-4">
