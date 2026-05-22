@@ -8,13 +8,13 @@ import { formatCurrency } from "@/lib/utils";
 import type { ReviewTemplate } from "@/lib/reviewTemplates";
 import type { Review, ReviewStats, ReviewTrade } from "@/lib/reviews";
 import { getPeriodLabel } from "@/lib/reviews";
-import { saveReviewAction, submitReviewAction } from "@/app/actions/reviews";
+import { updateReviewAnswersAction, submitReviewAction } from "@/app/actions/reviews";
 import { Check, Loader2, Copy, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 type Props = {
-  review: Review | null;
+  review: Review;
   periodType: "weekly" | "monthly";
   periodStart: string;
   periodEnd: string;
@@ -93,14 +93,13 @@ function TradeCard({
 }
 
 export default function ReviewEditorClient({
-  review: initialReview,
+  review,
   periodType, periodStart, periodEnd,
   template, stats, trades, currency,
 }: Props) {
   const router = useRouter();
 
-  const [reviewId, setReviewId] = useState<string | null>(initialReview?.id ?? null);
-  const [answers, setAnswers] = useState<Record<string, string>>(initialReview?.answers ?? {});
+  const [answers, setAnswers] = useState<Record<string, string>>(review.answers ?? {});
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -108,34 +107,20 @@ export default function ReviewEditorClient({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const reviewIdRef = useRef<string | null>(reviewId);
-  reviewIdRef.current = reviewId;
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestAnswers = useRef<Record<string, string>>(answers);
   latestAnswers.current = answers;
 
   const saveNow = useCallback(async (currentAnswers: Record<string, string>) => {
     setSaveStatus("saving");
-    const { id, error } = await saveReviewAction(
-      reviewIdRef.current,
-      periodType,
-      periodStart,
-      periodEnd,
-      currentAnswers
-    );
+    const { error } = await updateReviewAnswersAction(review.id, currentAnswers);
     if (error) {
-      console.error("Speicherfehler:", error);
       setSaveStatus("error");
       return;
     }
-    if (id && !reviewIdRef.current) {
-      setReviewId(id);
-      reviewIdRef.current = id;
-      router.replace("/reviews/" + id, { scroll: false });
-    }
     setSaveStatus("saved");
     setLastSaved(new Date());
-  }, [periodType, periodStart, periodEnd, router]);
+  }, [review.id]);
 
   const handleChange = useCallback((key: string, value: string) => {
     const next = { ...latestAnswers.current, [key]: value };
@@ -147,21 +132,12 @@ export default function ReviewEditorClient({
 
   async function handleSubmit() {
     setSubmitting(true);
-    const id = reviewIdRef.current;
-    // Erst speichern falls noch kein reviewId
-    if (!id) {
-      const { id: newId, error } = await saveReviewAction(
-        null, periodType, periodStart, periodEnd, latestAnswers.current
-      );
-      if (error || !newId) { setSubmitting(false); return; }
-      setReviewId(newId);
-      reviewIdRef.current = newId;
-    }
-    const finalId = reviewIdRef.current!;
-    const { error } = await submitReviewAction(finalId, latestAnswers.current);
+    const { error } = await submitReviewAction(review.id, latestAnswers.current);
     if (!error) {
       setShowConfirm(false);
-      router.push("/reviews/" + finalId);
+      router.push("/reviews/" + review.id);
+    } else {
+      setSaveStatus("error");
     }
     setSubmitting(false);
   }
@@ -250,7 +226,6 @@ export default function ReviewEditorClient({
   return (
     <>
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-6">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -264,7 +239,7 @@ export default function ReviewEditorClient({
             <h1 className="text-xl md:text-2xl font-bold text-white">{template.title}</h1>
             <p className="text-zinc-500 text-sm mt-0.5">{dateRange}</p>
           </div>
-          <div className="text-right flex-shrink-0 pt-1 min-w-[120px]">
+          <div className="text-right flex-shrink-0 pt-1 min-w-[130px]">
             {saveStatus === "saving" && (
               <span className="text-[11px] text-zinc-500 flex items-center justify-end gap-1">
                 <Loader2 className="w-3 h-3 animate-spin" />
@@ -284,7 +259,6 @@ export default function ReviewEditorClient({
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6">
-          {/* Fragen */}
           <div className="space-y-6">
             {template.questions.map((q) => (
               <div key={q.key}>
@@ -323,24 +297,21 @@ export default function ReviewEditorClient({
             </div>
           </div>
 
-          {/* Sidebar Desktop */}
           <div className="hidden lg:block">
             <div className="sticky top-6">{sidebar}</div>
           </div>
         </div>
 
-        {/* Sidebar Mobile */}
         <div className="lg:hidden border-t border-bg-border mt-2 pt-4">
           <button onClick={() => setSidebarOpen((v) => !v)}
             className="flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition mb-3">
-            {sidebarOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {sidebarOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             Zeitraum-Stats {sidebarOpen ? "ausblenden" : "anzeigen"}
           </button>
           {sidebarOpen && sidebar}
         </div>
       </div>
 
-      {/* Confirm-Dialog */}
       {showConfirm && (
         <>
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40" onClick={() => setShowConfirm(false)} />
