@@ -2,7 +2,6 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { TEMPLATES } from "@/lib/reviewTemplates";
 import {
-  getCurrentPeriodBounds,
   getPreviousPeriodBounds,
   calculateReviewStats,
 } from "@/lib/reviews";
@@ -24,12 +23,10 @@ export default async function NewReviewPage({
   const periodType = searchParams.type === "monthly" ? "monthly" : "weekly";
   const template = TEMPLATES[periodType];
 
-  // Vorperiode bevorzugen (Review wird meist nachtraglich geschrieben)
   const prev = getPreviousPeriodBounds(periodType);
   const periodStart = prev.start;
   const periodEnd = prev.end;
 
-  // Review serverseitig anlegen — kein INSERT vom Client noetig
   const { data: newReview, error: insertError } = await supabase
     .from("reviews")
     .insert({
@@ -44,12 +41,23 @@ export default async function NewReviewPage({
     .single();
 
   if (insertError || !newReview) {
-    // Fehler sichtbar machen statt stiller Fehler
-    console.error("Review insert error:", insertError?.message);
-    redirect("/reviews?error=create_failed");
+    // Fehler direkt anzeigen statt silent redirect
+    return (
+      <div className="max-w-xl mx-auto mt-12 p-6 bg-bg-card border border-danger/40 rounded-2xl">
+        <h2 className="text-lg font-bold text-danger mb-3">Fehler beim Anlegen des Reviews</h2>
+        <p className="text-sm text-zinc-300 mb-2">
+          {insertError?.message ?? "Unbekannter Fehler – kein Review-Objekt zurückgegeben"}
+        </p>
+        <pre className="text-[11px] text-zinc-500 bg-bg-elevated rounded-xl p-3 overflow-x-auto whitespace-pre-wrap">
+          {JSON.stringify(insertError, null, 2)}
+        </pre>
+        <a href="/reviews" className="mt-4 inline-block text-sm text-gold-400 hover:underline">
+          ← Zurück zu Reviews
+        </a>
+      </div>
+    );
   }
 
-  // Trades fuer Stats laden
   const userPreferences = await getUserPreferences();
   const { data: accounts } = await supabase
     .from("accounts")
