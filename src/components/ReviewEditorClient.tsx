@@ -15,6 +15,7 @@ type SaveStatus = "idle" | "saving" | "saved";
 
 type Props = {
   review: Review | null;
+  userId: string;
   periodType: "weekly" | "monthly";
   periodStart: string;
   periodEnd: string;
@@ -93,6 +94,7 @@ function TradeCard({
 
 export default function ReviewEditorClient({
   review: initialReview,
+  userId,
   periodType, periodStart, periodEnd,
   template, stats, trades, currency,
 }: Props) {
@@ -112,27 +114,16 @@ export default function ReviewEditorClient({
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reviewIdRef = useRef<string | null>(reviewId);
   reviewIdRef.current = reviewId;
-  const userIdRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      userIdRef.current = data.user?.id ?? null;
-    });
-  }, [supabase]);
 
   const saveNow = useCallback(async (currentAnswers: Record<string, string>) => {
     setSaveStatus("saving");
     const id = reviewIdRef.current;
     if (!id) {
-      const userId = userIdRef.current;
-      if (!userId) {
-        const { data } = await supabase.auth.getUser();
-        userIdRef.current = data.user?.id ?? null;
-      }
       const { data, error } = await supabase
         .from("reviews")
         .insert({
-          user_id: userIdRef.current,
+          user_id: userId,
           period_type: periodType,
           period_start: periodStart,
           period_end: periodEnd,
@@ -164,7 +155,7 @@ export default function ReviewEditorClient({
     }
     setSaveStatus("saved");
     setLastSaved(new Date());
-  }, [supabase, periodType, periodStart, periodEnd, router]);
+  }, [supabase, userId, periodType, periodStart, periodEnd, router]);
 
   const handleChange = useCallback((key: string, value: string) => {
     const next = { ...answers, [key]: value };
