@@ -20,15 +20,15 @@ export async function submitReviewAction(
   answers: Record<string, string>
 ): Promise<{ error: string | null }> {
   const supabase = createClient();
-  const { error: updateErr } = await supabase
-    .from("reviews")
-    .update({ answers, updated_at: new Date().toISOString() })
-    .eq("id", reviewId);
-  if (updateErr) return { error: updateErr.message };
-
+  const now = new Date().toISOString();
   const { error } = await supabase
     .from("reviews")
-    .update({ status: "submitted", submitted_at: new Date().toISOString() })
+    .update({
+      answers,
+      status: "submitted",
+      submitted_at: now,
+      updated_at: now,
+    })
     .eq("id", reviewId);
   if (error) return { error: error.message };
   return { error: null };
