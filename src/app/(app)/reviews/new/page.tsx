@@ -1,8 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { TEMPLATES } from "@/lib/reviewTemplates";
-import { getCurrentPeriodBounds, getPreviousPeriodBounds, calculateReviewStats } from "@/lib/reviews";
-import type { ReviewTrade } from "@/lib/reviews";
+import {
+  getCurrentPeriodBounds,
+  getPreviousPeriodBounds,
+  calculateReviewStats,
+} from "@/lib/reviews";
+import type { Review, ReviewTrade } from "@/lib/reviews";
 import ReviewEditorClient from "@/components/ReviewEditorClient";
 import { getUserPreferences } from "@/lib/getUserPreferences";
 
@@ -11,7 +15,7 @@ export const dynamic = "force-dynamic";
 export default async function NewReviewPage({
   searchParams,
 }: {
-  searchParams: { type?: string; period?: string };
+  searchParams: { type?: string };
 }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -20,27 +24,44 @@ export default async function NewReviewPage({
   const periodType = searchParams.type === "monthly" ? "monthly" : "weekly";
   const template = TEMPLATES[periodType];
 
-  // Zeitraum bestimmen: Vorperiode bevorzugen (Review wird meist nachträglich geschrieben)
+  // Vorperiode bevorzugen (Review wird meist nachtraglich geschrieben)
   const prev = getPreviousPeriodBounds(periodType);
-  const curr = getCurrentPeriodBounds(periodType);
-  const bounds = searchParams.period
-    ? { start: searchParams.period, end: searchParams.period }
-    : prev;
+  const periodStart = prev.start;
+  const periodEnd = prev.end;
 
-  // Falls period-Override: korrekte End-Bound berechnen
-  let periodStart = bounds.start;
-  let periodEnd = bounds.end;
-  if (searchParams.period && searchParams.period !== prev.start) {
-    periodStart = curr.start;
-    periodEnd = curr.end;
+  // Review serverseitig anlegen — kein INSERT vom Client noetig
+  const { data: newReview, error: insertError } = await supabase
+    .from("reviews")
+    .insert({
+      user_id: user.id,
+      period_type: periodType,
+      period_start: periodStart,
+      period_end: periodEnd,
+      answers: {},
+      status: "draft",
+    })
+    .select()
+    .single();
+
+  if (insertError || !newReview) {
+    // Fehler sichtbar machen statt stiller Fehler
+    console.error("Review insert error:", insertError?.message);
+    redirect("/reviews?error=create_failed");
   }
 
-  // Account für Trades
+  // Trades fuer Stats laden
   const userPreferences = await getUserPreferences();
-  const { data: accounts } = await supabase.from("accounts").select("id, currency").eq("is_active", true);
-  const account = accounts?.find((a) => a.id === userPreferences.active_account_id) ?? accounts?.[0];
+  const { data: accounts } = await supabase
+    .from("accounts")
+    .select("id, currency")
+    .eq("is_active", true);
+  const account =
+    accounts?.find((a) => a.id === userPreferences.active_account_id) ??
+    accounts?.[0];
 
   let trades: ReviewTrade[] = [];
+  let currency = account?.currency ?? "EUR";
+
   if (account) {
     const { data } = await supabase
       .from("trades")
@@ -56,14 +77,14 @@ export default async function NewReviewPage({
 
   return (
     <ReviewEditorClient
-      review={null}
+      review={newReview as Review}
       periodType={periodType}
       periodStart={periodStart}
       periodEnd={periodEnd}
       template={template}
       stats={stats}
       trades={trades}
-      currency={account?.currency ?? "EUR"}
+      currency={currency}
     />
   );
 }
