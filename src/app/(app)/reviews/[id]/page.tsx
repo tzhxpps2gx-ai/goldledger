@@ -13,7 +13,7 @@ import ReviewEditorClient from "@/components/ReviewEditorClient";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils";
-import { ArrowLeft, RotateCcw } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import ReviewReopenButton from "@/components/ReviewReopenButton";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +25,8 @@ function formatDate(s: string): string {
   });
 }
 
-function formatDateTime(s: string): string {
+function formatDateTime(s: string | null): string {
+  if (!s) return "";
   return new Date(s).toLocaleString("de-DE", {
     day: "numeric", month: "short", year: "numeric",
     hour: "2-digit", minute: "2-digit",
@@ -47,7 +48,6 @@ export default async function ReviewDetailPage({ params }: { params: { id: strin
 
   const r = review as Review;
 
-  // Trades für Stats + Referenz-Auflösung
   const userPreferences = await getUserPreferences();
   const { data: accounts } = await supabase.from("accounts").select("id, currency").eq("is_active", true);
   const account = accounts?.find((a) => a.id === userPreferences.active_account_id) ?? accounts?.[0];
@@ -66,14 +66,13 @@ export default async function ReviewDetailPage({ params }: { params: { id: strin
     trades = (data ?? []) as ReviewTrade[];
   }
 
-  // Bei Draft: Editor zeigen
   if (r.status === "draft") {
     const template = TEMPLATES[r.period_type] ?? TEMPLATES.weekly;
     const stats = calculateReviewStats(trades, r.period_start, r.period_end);
     return (
       <ReviewEditorClient
         review={r}
-        periodType={r.period_type}
+        periodType={r.period_type as "weekly" | "monthly"}
         periodStart={r.period_start}
         periodEnd={r.period_end}
         template={template}
@@ -84,12 +83,10 @@ export default async function ReviewDetailPage({ params }: { params: { id: strin
     );
   }
 
-  // Submitted: Detailansicht
   const template = TEMPLATES[r.period_type] ?? TEMPLATES.weekly;
   const stats = calculateReviewStats(trades, r.period_start, r.period_end);
 
-  // Trade-Referenzen in Antworten auflösen
-  const allText = Object.values(r.answers).join(" ");
+  const allText = Object.values(r.answers ?? {}).join(" ");
   const refIds = parseTradeReferences(allText);
   const tradeMap = new Map<string, { symbol: string }>();
   if (refIds.length > 0) {
@@ -103,10 +100,11 @@ export default async function ReviewDetailPage({ params }: { params: { id: strin
   }
 
   const periodLabel = getPeriodLabel(r.period_type, r.period_end);
+  const createdStr = formatDateTime(r.created_at);
+  const submittedStr = formatDateTime(r.submitted_at);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      {/* Back + Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
           <Link href="/reviews" className="inline-flex items-center gap-1 text-xs text-zinc-500 hover:text-white transition mb-2">
@@ -122,12 +120,11 @@ export default async function ReviewDetailPage({ params }: { params: { id: strin
             </span>
           </div>
           <h1 className="text-xl font-bold text-white mt-1">{template.title}</h1>
-          <p className="text-zinc-500 text-sm">{formatDate(r.period_start)} – {formatDate(r.period_end)}</p>
+          <p className="text-zinc-500 text-sm">{formatDate(r.period_start)} &#8211; {formatDate(r.period_end)}</p>
         </div>
         <ReviewReopenButton reviewId={r.id} />
       </div>
 
-      {/* Stats */}
       <div className="bg-bg-card border border-bg-border rounded-2xl p-4">
         <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-3">Zeitraum-Performance</div>
         <div className="flex gap-4 flex-wrap">
@@ -147,17 +144,16 @@ export default async function ReviewDetailPage({ params }: { params: { id: strin
           </div>
           {stats.avgRMultiple != null && (
             <div>
-              <div className="text-[10px] text-zinc-500">Ø R</div>
+              <div className="text-[10px] text-zinc-500">&#216; R</div>
               <div className="text-lg font-bold text-white">{stats.avgRMultiple.toFixed(2)}R</div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Antworten */}
       <div className="space-y-5">
         {template.questions.map((q) => {
-          const answer = r.answers[q.key]?.trim();
+          const answer = (r.answers ?? {})[q.key]?.trim();
           if (!answer) return null;
           const parts = renderTextWithTradeLinks(answer, tradeMap);
           return (
@@ -180,11 +176,12 @@ export default async function ReviewDetailPage({ params }: { params: { id: strin
         })}
       </div>
 
-      {/* Footer */}
-      <div className="text-[11px] text-zinc-600 text-center pb-4">
-        Erstellt {formatDateTime(r.created_at)}
-        {r.submitted_at && " · Abgeschlossen " + formatDateTime(r.submitted_at)}
-      </div>
+      {(createdStr || submittedStr) && (
+        <div className="text-[11px] text-zinc-600 text-center pb-4">
+          {createdStr && "Erstellt " + createdStr}
+          {submittedStr && " · Abgeschlossen " + submittedStr}
+        </div>
+      )}
     </div>
   );
 }
