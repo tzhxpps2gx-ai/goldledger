@@ -18,6 +18,7 @@ import EquityChart from "@/components/EquityChart";
 import GoalsWidget from "@/components/GoalsWidget";
 import StreakWidget from "@/components/StreakWidget";
 import CelebrationConfetti from "@/components/CelebrationConfetti";
+import ReviewDueBanner from "@/components/ReviewDueBanner";
 import {
   type Goal,
   type TradeLike,
@@ -190,6 +191,8 @@ export default function DashboardClient({
           icon={Activity}
         />
       </div>
+
+      <ReviewDueBanner />
 
       <GoalsWidget goals={goals} trades={goalTrades} currency={account.currency} />
 
