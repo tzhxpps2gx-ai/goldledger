@@ -57,6 +57,7 @@ export default async function NewReviewPage({
   return (
     <ReviewEditorClient
       review={null}
+      userId={user.id}
       periodType={periodType}
       periodStart={periodStart}
       periodEnd={periodEnd}
