@@ -112,14 +112,27 @@ export default function ReviewEditorClient({
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reviewIdRef = useRef<string | null>(reviewId);
   reviewIdRef.current = reviewId;
+  const userIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      userIdRef.current = data.user?.id ?? null;
+    });
+  }, [supabase]);
 
   const saveNow = useCallback(async (currentAnswers: Record<string, string>) => {
     setSaveStatus("saving");
     const id = reviewIdRef.current;
     if (!id) {
+      const userId = userIdRef.current;
+      if (!userId) {
+        const { data } = await supabase.auth.getUser();
+        userIdRef.current = data.user?.id ?? null;
+      }
       const { data, error } = await supabase
         .from("reviews")
         .insert({
+          user_id: userIdRef.current,
           period_type: periodType,
           period_start: periodStart,
           period_end: periodEnd,
@@ -128,16 +141,26 @@ export default function ReviewEditorClient({
         })
         .select("id")
         .single();
+      if (error) {
+        console.error("Review insert error:", error.message);
+        setSaveStatus("idle");
+        return;
+      }
       if (data?.id) {
         setReviewId(data.id);
         reviewIdRef.current = data.id;
         router.replace("/reviews/" + data.id, { scroll: false });
       }
     } else {
-      await supabase
+      const { error } = await supabase
         .from("reviews")
         .update({ answers: currentAnswers, updated_at: new Date().toISOString() })
         .eq("id", id);
+      if (error) {
+        console.error("Review update error:", error.message);
+        setSaveStatus("idle");
+        return;
+      }
     }
     setSaveStatus("saved");
     setLastSaved(new Date());
