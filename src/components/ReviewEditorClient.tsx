@@ -8,8 +8,12 @@ import { formatCurrency } from "@/lib/utils";
 import type { ReviewTemplate } from "@/lib/reviewTemplates";
 import type { Review, ReviewStats, ReviewTrade } from "@/lib/reviews";
 import { getPeriodLabel } from "@/lib/reviews";
-import { updateReviewAnswersAction, submitReviewAction } from "@/app/actions/reviews";
-import { ArrowLeft, Check, Loader2, Copy, ExternalLink, ChevronDown } from "lucide-react";
+import {
+  updateReviewAnswersAction,
+  submitReviewAction,
+  deleteReviewAction,
+} from "@/app/actions/reviews";
+import { ArrowLeft, Check, Loader2, Copy, ExternalLink, ChevronDown, Trash2 } from "lucide-react";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -45,13 +49,8 @@ function StatCard({ label, children }: { label: string; children: React.ReactNod
   );
 }
 
-function TradeCard({
-  label, trade, currency, onCopyId,
-}: {
-  label: string;
-  trade: ReviewTrade;
-  currency: string;
-  onCopyId: (id: string) => void;
+function TradeCard({ label, trade, currency, onCopyId }: {
+  label: string; trade: ReviewTrade; currency: string; onCopyId: (id: string) => void;
 }) {
   return (
     <StatCard label={label}>
@@ -81,7 +80,7 @@ function TradeCard({
             title="Trade &#246;ffnen">
             <ExternalLink className="w-3 h-3" />
           </Link>
-          <button onClick={() => onCopyId(trade.id)}
+          <button type="button" onClick={() => onCopyId(trade.id)}
             className="p-1.5 rounded-lg bg-bg-card border border-bg-border text-zinc-500 hover:text-gold-400 transition"
             title="ID kopieren">
             <Copy className="w-3 h-3" />
@@ -103,7 +102,9 @@ export default function ReviewEditorClient({
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -114,10 +115,7 @@ export default function ReviewEditorClient({
   const saveNow = useCallback(async (currentAnswers: Record<string, string>) => {
     setSaveStatus("saving");
     const { error } = await updateReviewAnswersAction(review.id, currentAnswers);
-    if (error) {
-      setSaveStatus("error");
-      return;
-    }
+    if (error) { setSaveStatus("error"); return; }
     setSaveStatus("saved");
     setLastSaved(new Date());
   }, [review.id]);
@@ -139,11 +137,23 @@ export default function ReviewEditorClient({
     setSubmitting(true);
     const { error } = await submitReviewAction(review.id, latestAnswers.current);
     if (!error) {
-      setShowConfirm(false);
       router.push("/reviews/" + review.id);
     } else {
       setSaveStatus("error");
+      setShowSubmitConfirm(false);
       setSubmitting(false);
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    const { error } = await deleteReviewAction(review.id);
+    if (!error) {
+      router.push("/reviews");
+    } else {
+      setSaveStatus("error");
+      setShowDeleteConfirm(false);
+      setDeleting(false);
     }
   }
 
@@ -188,7 +198,6 @@ export default function ReviewEditorClient({
           <p className="text-xs text-zinc-600 mt-1">Keine Trades im Zeitraum.</p>
         )}
       </StatCard>
-
       {stats.bestTrade && (
         <TradeCard label="Bester Trade" trade={stats.bestTrade}
           currency={currency} onCopyId={handleCopyId} />
@@ -229,128 +238,145 @@ export default function ReviewEditorClient({
   );
 
   return (
-    <>
-      <div className="max-w-4xl mx-auto">
-        {/* Zurück-Link */}
+    <div className="max-w-4xl mx-auto">
+      {/* Zurück + Löschen */}
+      <div className="flex items-center justify-between mb-4">
         <Link href="/reviews"
-          className="inline-flex items-center gap-1 text-xs text-zinc-500 hover:text-white transition mb-4">
+          className="inline-flex items-center gap-1 text-xs text-zinc-500 hover:text-white transition">
           <ArrowLeft className="w-3 h-3" />
           Alle Reviews
         </Link>
+        <button type="button" onClick={() => setShowDeleteConfirm(true)}
+          className="inline-flex items-center gap-1.5 text-xs text-zinc-600 hover:text-danger transition">
+          <Trash2 className="w-3.5 h-3.5" />
+          Entwurf l&#246;schen
+        </button>
+      </div>
 
-        <div className="flex items-start justify-between gap-3 mb-6">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[11px] font-bold text-gold-400 bg-gold-500/10 border border-gold-500/25 px-2 py-0.5 rounded-full">
-                {periodLabel}
-              </span>
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-yellow-500/15 text-yellow-400">
-                Entwurf
-              </span>
-            </div>
-            <h1 className="text-xl md:text-2xl font-bold text-white">{template.title}</h1>
-            <p className="text-zinc-500 text-sm mt-0.5">{dateRange}</p>
-          </div>
-          <div className="text-right flex-shrink-0 pt-1 min-w-[130px]">
-            {saveStatus === "saving" && (
-              <span className="text-[11px] text-zinc-500 flex items-center justify-end gap-1">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                Speichert&#8230;
-              </span>
-            )}
-            {saveStatus === "saved" && lastSaved && (
-              <span className="text-[11px] text-success flex items-center justify-end gap-1">
-                <Check className="w-3 h-3" />
-                {"Gespeichert " + lastSaved.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
-              </span>
-            )}
-            {saveStatus === "error" && (
-              <span className="text-[11px] text-danger">Fehler beim Speichern</span>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6">
-          <div className="space-y-6">
-            {template.questions.map((q) => (
-              <div key={q.key}>
-                <label className="block text-sm font-semibold text-white mb-1">{q.label}</label>
-                {q.hint && <p className="text-[11px] text-zinc-500 mb-2">{q.hint}</p>}
-                <textarea
-                  value={answers[q.key] ?? ""}
-                  onChange={(e) => handleChange(q.key, e.target.value)}
-                  placeholder={q.placeholder}
-                  rows={4}
-                  className="w-full bg-bg-card border border-bg-border rounded-xl px-4 py-3 text-sm text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/20 resize-none transition"
-                  style={{ minHeight: "100px" }}
-                  onInput={(e) => {
-                    const t = e.currentTarget;
-                    t.style.height = "auto";
-                    t.style.height = t.scrollHeight + "px";
-                  }}
-                />
-              </div>
-            ))}
-
-            <div className="flex items-center gap-3 pb-8">
-              <button
-                type="button"
-                onClick={handleSaveAndBack}
-                disabled={saveStatus === "saving"}
-                className="px-4 py-2 border border-bg-border text-zinc-400 hover:text-white hover:border-zinc-600 rounded-xl text-sm font-medium transition disabled:opacity-50"
-              >
-                Als Entwurf speichern
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowConfirm(true)}
-                className="px-5 py-2 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-bg font-semibold rounded-xl transition-all shadow-md shadow-gold-500/20 text-sm"
-              >
-                Review abschlie&#223;en
-              </button>
-            </div>
-          </div>
-
-          <div className="hidden lg:block">
-            <div className="sticky top-6">{sidebar}</div>
-          </div>
-        </div>
-
-        <div className="lg:hidden border-t border-bg-border mt-2 pt-4">
-          <button type="button" onClick={() => setSidebarOpen((v) => !v)}
-            className="flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition mb-3">
-            <ChevronDown className={cn("w-4 h-4 transition-transform", sidebarOpen && "rotate-180")} />
-            Zeitraum-Stats {sidebarOpen ? "ausblenden" : "anzeigen"}
+      {/* Löschen-Bestätigung (inline) */}
+      {showDeleteConfirm && (
+        <div className="mb-4 flex items-center gap-3 p-3 bg-danger/10 border border-danger/30 rounded-xl">
+          <span className="text-xs text-zinc-300 flex-1">Entwurf wirklich l&#246;schen?</span>
+          <button type="button" onClick={() => setShowDeleteConfirm(false)} disabled={deleting}
+            className="px-3 py-1.5 border border-bg-border text-zinc-400 hover:text-white rounded-lg text-xs transition disabled:opacity-40">
+            Abbrechen
           </button>
-          {sidebarOpen && sidebar}
+          <button type="button" onClick={handleDelete} disabled={deleting}
+            className="px-3 py-1.5 bg-danger/20 border border-danger/40 text-danger hover:bg-danger/30 rounded-lg text-xs font-medium transition disabled:opacity-50 flex items-center gap-1">
+            {deleting && <Loader2 className="w-3 h-3 animate-spin" />}
+            Ja, l&#246;schen
+          </button>
+        </div>
+      )}
+
+      <div className="flex items-start justify-between gap-3 mb-6">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[11px] font-bold text-gold-400 bg-gold-500/10 border border-gold-500/25 px-2 py-0.5 rounded-full">
+              {periodLabel}
+            </span>
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-yellow-500/15 text-yellow-400">
+              Entwurf
+            </span>
+          </div>
+          <h1 className="text-xl md:text-2xl font-bold text-white">{template.title}</h1>
+          <p className="text-zinc-500 text-sm mt-0.5">{dateRange}</p>
+        </div>
+        <div className="text-right flex-shrink-0 pt-1 min-w-[130px]">
+          {saveStatus === "saving" && (
+            <span className="text-[11px] text-zinc-500 flex items-center justify-end gap-1">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              Speichert&#8230;
+            </span>
+          )}
+          {saveStatus === "saved" && lastSaved && (
+            <span className="text-[11px] text-success flex items-center justify-end gap-1">
+              <Check className="w-3 h-3" />
+              {"Gespeichert " + lastSaved.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          )}
+          {saveStatus === "error" && (
+            <span className="text-[11px] text-danger">Fehler beim Speichern</span>
+          )}
         </div>
       </div>
 
-      {showConfirm && (
-        <>
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40"
-            onClick={() => !submitting && setShowConfirm(false)} />
-          <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 md:inset-auto md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-sm z-50">
-            <div className="bg-bg-card border border-bg-border rounded-2xl p-6 shadow-xl">
-              <h3 className="text-base font-bold text-white mb-2">Review abschlie&#223;en?</h3>
-              <p className="text-sm text-zinc-400 mb-5">
-                Du kannst es danach noch einmal &#246;ffnen, aber so dokumentierst du den aktuellen Stand als abgeschlossen.
-              </p>
-              <div className="flex gap-3">
-                <button type="button" onClick={() => setShowConfirm(false)} disabled={submitting}
-                  className="flex-1 px-4 py-2 border border-bg-border text-zinc-400 hover:text-white rounded-xl text-sm font-medium transition disabled:opacity-40">
-                  Abbrechen
-                </button>
-                <button type="button" onClick={handleSubmit} disabled={submitting}
-                  className="flex-1 px-4 py-2 bg-gradient-to-r from-gold-500 to-gold-600 text-bg font-semibold rounded-xl text-sm transition disabled:opacity-50 flex items-center justify-center gap-2">
-                  {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  Abschlie&#223;en
-                </button>
-              </div>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6">
+        <div className="space-y-6">
+          {template.questions.map((q) => (
+            <div key={q.key}>
+              <label className="block text-sm font-semibold text-white mb-1">{q.label}</label>
+              {q.hint && <p className="text-[11px] text-zinc-500 mb-2">{q.hint}</p>}
+              <textarea
+                value={answers[q.key] ?? ""}
+                onChange={(e) => handleChange(q.key, e.target.value)}
+                placeholder={q.placeholder}
+                rows={4}
+                className="w-full bg-bg-card border border-bg-border rounded-xl px-4 py-3 text-sm text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/20 resize-none transition"
+                style={{ minHeight: "100px" }}
+                onInput={(e) => {
+                  const t = e.currentTarget;
+                  t.style.height = "auto";
+                  t.style.height = t.scrollHeight + "px";
+                }}
+              />
+            </div>
+          ))}
+
+          <div className="flex items-center gap-3 pb-8">
+            <button type="button" onClick={handleSaveAndBack} disabled={saveStatus === "saving"}
+              className="px-4 py-2 border border-bg-border text-zinc-400 hover:text-white hover:border-zinc-600 rounded-xl text-sm font-medium transition disabled:opacity-50">
+              Als Entwurf speichern
+            </button>
+            <button type="button" onClick={() => setShowSubmitConfirm(true)}
+              className="px-5 py-2 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-bg font-semibold rounded-xl transition-all shadow-md shadow-gold-500/20 text-sm">
+              Review abschlie&#223;en
+            </button>
+          </div>
+        </div>
+
+        <div className="hidden lg:block">
+          <div className="sticky top-6">{sidebar}</div>
+        </div>
+      </div>
+
+      <div className="lg:hidden border-t border-bg-border mt-2 pt-4">
+        <button type="button" onClick={() => setSidebarOpen((v) => !v)}
+          className="flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition mb-3">
+          <ChevronDown className={cn("w-4 h-4 transition-transform", sidebarOpen && "rotate-180")} />
+          Zeitraum-Stats {sidebarOpen ? "ausblenden" : "anzeigen"}
+        </button>
+        {sidebarOpen && sidebar}
+      </div>
+
+      {/* Abschließen-Modal: Fullscreen-Flex, kein separates Overlay */}
+      {showSubmitConfirm && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget && !submitting) setShowSubmitConfirm(false); }}
+        >
+          <div
+            className="bg-bg-card border border-bg-border rounded-2xl p-6 shadow-2xl w-full max-w-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-bold text-white mb-2">Review abschlie&#223;en?</h3>
+            <p className="text-sm text-zinc-400 mb-5">
+              Du kannst es danach noch einmal &#246;ffnen, aber so dokumentierst du den aktuellen Stand als abgeschlossen.
+            </p>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setShowSubmitConfirm(false)} disabled={submitting}
+                className="flex-1 px-4 py-2.5 border border-bg-border text-zinc-400 hover:text-white rounded-xl text-sm font-medium transition disabled:opacity-40">
+                Abbrechen
+              </button>
+              <button type="button" onClick={handleSubmit} disabled={submitting}
+                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-gold-500 to-gold-600 text-bg font-semibold rounded-xl text-sm transition disabled:opacity-50 flex items-center justify-center gap-2">
+                {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                Abschlie&#223;en
+              </button>
             </div>
           </div>
-        </>
+        </div>
       )}
-    </>
+    </div>
   );
 }
