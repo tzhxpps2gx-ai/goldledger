@@ -19,6 +19,7 @@ import GoalsWidget from "@/components/GoalsWidget";
 import StreakWidget from "@/components/StreakWidget";
 import CelebrationConfetti from "@/components/CelebrationConfetti";
 import ReviewDueBanner from "@/components/ReviewDueBanner";
+import DisciplineScoreWidget from "@/components/DisciplineScoreWidget";
 import {
   type Goal,
   type TradeLike,
@@ -197,6 +198,8 @@ export default function DashboardClient({
       <GoalsWidget goals={goals} trades={goalTrades} currency={account.currency} />
 
       <StreakWidget trades={trades} mode={userPreferences.streak_mode} />
+
+      <DisciplineScoreWidget />
 
       <div className="bg-bg-card border border-bg-border rounded-2xl p-5 md:p-6">
         <div className="flex items-center justify-between mb-4">
