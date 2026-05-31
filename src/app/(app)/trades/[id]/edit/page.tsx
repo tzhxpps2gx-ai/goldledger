@@ -11,8 +11,11 @@ import {
 } from "@/lib/calculations";
 import { cn } from "@/lib/utils";
 import TagChips from "@/components/TagChips";
+import ChecklistSection from "@/components/ChecklistSection";
 import type { Tag } from "@/lib/tags";
+import type { ChecklistItem } from "@/lib/checklist";
 import { saveTradeTagsAction } from "@/app/actions/trade-tags";
+import { getChecklistItemsAction, saveTradeChecklistAction } from "@/app/actions/checklist";
 
 export default function EditTradePage() {
   const router = useRouter();
@@ -24,6 +27,8 @@ export default function EditTradePage() {
   const [originalTrade, setOriginalTrade] = useState<any>(null);
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
+  const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
   const [loadingTrade, setLoadingTrade] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,13 +53,15 @@ export default function EditTradePage() {
   useEffect(() => {
     async function load() {
       // Konten, Trade und verfügbare Tags parallel laden
-      const [{ data: accs }, { data: trade }, { data: tagsData }] = await Promise.all([
+      const [{ data: accs }, { data: trade }, { data: tagsData }, { data: clItems }] = await Promise.all([
         supabase.from("accounts").select("*").eq("is_active", true),
         supabase.from("trades").select("*").eq("id", tradeId).single(),
         supabase.from("tags").select("id, name, category, color").order("category").order("name"),
+        getChecklistItemsAction(),
       ]);
       if (accs) setAccounts(accs);
       setAvailableTags((tagsData ?? []) as Tag[]);
+      setChecklistItems((clItems ?? []) as ChecklistItem[]);
 
       if (trade) {
         setOriginalTrade(trade);
@@ -79,12 +86,17 @@ export default function EditTradePage() {
           status: (trade.status as any) ?? "closed",
         });
 
-        // Bereits zugewiesene Tags des Trades vorbefüllen
-        const { data: existingLinks } = await supabase
-          .from("trade_tags")
-          .select("tag_id")
-          .eq("trade_id", tradeId);
+        // Bereits zugewiesene Tags + Checklist-Completions laden
+        const [{ data: existingLinks }, { data: existingComps }] = await Promise.all([
+          supabase.from("trade_tags").select("tag_id").eq("trade_id", tradeId),
+          supabase.from("trade_checklist_completions").select("item_id, is_checked").eq("trade_id", tradeId),
+        ]);
         setSelectedTagIds(existingLinks?.map((r: any) => r.tag_id) ?? []);
+        const compMap: Record<string, boolean> = {};
+        for (const c of existingComps ?? []) {
+          compMap[c.item_id as string] = c.is_checked as boolean;
+        }
+        setCheckedItems(compMap);
       }
       setLoadingTrade(false);
     }
@@ -183,7 +195,7 @@ export default function EditTradePage() {
       }
     }
 
-    // Tags komplett ersetzen via Server Action (löschen + neu einfügen)
+    // Tags + Checklist speichern
     const { error: tagError } = await saveTradeTagsAction(tradeId, selectedTagIds);
     if (tagError) {
       setError("Tags konnten nicht gespeichert werden: " + tagError);
@@ -191,8 +203,20 @@ export default function EditTradePage() {
       return;
     }
 
+    if (checklistItems.length > 0) {
+      const completions = checklistItems.map((item) => ({
+        item_id: item.id,
+        is_checked: checkedItems[item.id] ?? false,
+      }));
+      await saveTradeChecklistAction(tradeId, completions);
+      // checklist_used = true wenn noch nicht gesetzt
+      if (!originalTrade?.checklist_used) {
+        await supabase.from("trades").update({ checklist_used: true }).eq("id", tradeId);
+      }
+    }
+
     router.refresh();
-    router.push(`/trades/${tradeId}`);
+    router.push("/trades/" + tradeId);
   }
 
   if (loadingTrade) {
@@ -301,6 +325,13 @@ export default function EditTradePage() {
             <textarea value={form.notes} onChange={(e) => update("notes", e.target.value)} rows={3} className={inputCls} />
           </div>
         </div>
+
+        {/* Pre-Trading-Checklist */}
+        <ChecklistSection
+          items={checklistItems}
+          checked={checkedItems}
+          onChange={(itemId, value) => setCheckedItems((prev) => ({ ...prev, [itemId]: value }))}
+        />
 
         {/* Tags zuweisen */}
         {availableTags.length > 0 && (
