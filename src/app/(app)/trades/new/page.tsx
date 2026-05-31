@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -11,8 +11,11 @@ import {
 } from "@/lib/calculations";
 import { cn } from "@/lib/utils";
 import TagChips from "@/components/TagChips";
+import ChecklistSection from "@/components/ChecklistSection";
 import type { Tag } from "@/lib/tags";
+import type { ChecklistItem } from "@/lib/checklist";
 import { saveTradeTagsAction } from "@/app/actions/trade-tags";
+import { saveTradeChecklistAction, getChecklistItemsAction } from "@/app/actions/checklist";
 
 export default function NewTradePage() {
   const router = useRouter();
@@ -20,6 +23,8 @@ export default function NewTradePage() {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
+  const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,22 +47,27 @@ export default function NewTradePage() {
 
   useEffect(() => {
     async function loadData() {
-      // Konten und Tags parallel laden
-      const [{ data: accs }, { data: tagsData }] = await Promise.all([
+      const [{ data: accs }, { data: tagsData }, { data: clItems }] = await Promise.all([
         supabase.from("accounts").select("*").eq("is_active", true),
         supabase.from("tags").select("id, name, category, color").order("category").order("name"),
+        getChecklistItemsAction(),
       ]);
       if (accs && accs.length > 0) {
         setAccounts(accs);
         setForm((f) => ({ ...f, account_id: accs[0].id }));
       }
       setAvailableTags((tagsData ?? []) as Tag[]);
+      setChecklistItems((clItems ?? []) as ChecklistItem[]);
     }
     loadData();
   }, []);
 
   function update<K extends keyof typeof form>(key: K, value: typeof form[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function handleChecklistChange(itemId: string, value: boolean) {
+    setCheckedItems((prev) => ({ ...prev, [itemId]: value }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -83,10 +93,8 @@ export default function NewTradePage() {
     let exchangeRate = 1.0;
 
     if (form.status === "closed" && actualEntry && actualExit) {
-      // Wechselkurs holen für korrekten EUR-Betrag
       exchangeRate = await fetchEurUsdRate();
       pnl = calculateXauusdPnlEur(actualEntry, actualExit, lotSize, form.direction, exchangeRate);
-
       if (plannedStop) {
         rMultiple = calculateRMultiple(actualEntry, plannedStop, actualExit, form.direction);
       }
@@ -96,14 +104,14 @@ export default function NewTradePage() {
       }
     }
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       setError("Nicht eingeloggt");
       setLoading(false);
       return;
     }
+
+    const checklistUsed = checklistItems.length > 0;
 
     const { data: newTrade, error: insertError } = await supabase
       .from("trades")
@@ -129,6 +137,7 @@ export default function NewTradePage() {
         exchange_rate: exchangeRate,
         status: form.status,
         notes: form.notes || null,
+        checklist_used: checklistUsed,
       })
       .select()
       .single();
@@ -144,14 +153,11 @@ export default function NewTradePage() {
       if (account) {
         await supabase
           .from("accounts")
-          .update({
-            current_balance: Number(account.current_balance) + pnl,
-          })
+          .update({ current_balance: Number(account.current_balance) + pnl })
           .eq("id", account.id);
       }
     }
 
-    // Tags dem Trade zuweisen (Server Action)
     if (selectedTagIds.length > 0) {
       const { error: tagError } = await saveTradeTagsAction(newTrade.id, selectedTagIds);
       if (tagError) {
@@ -161,8 +167,16 @@ export default function NewTradePage() {
       }
     }
 
+    if (checklistUsed) {
+      const completions = checklistItems.map((item) => ({
+        item_id: item.id,
+        is_checked: checkedItems[item.id] ?? false,
+      }));
+      await saveTradeChecklistAction(newTrade.id, completions);
+    }
+
     router.refresh();
-    router.push(`/trades/${newTrade.id}`);
+    router.push("/trades/" + newTrade.id);
   }
 
   if (accounts.length === 0) {
@@ -175,7 +189,7 @@ export default function NewTradePage() {
         <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
           Neuer Trade
         </h1>
-        <p className="text-zinc-400 text-sm mt-1">XAUUSD · Vantage · in EUR</p>
+        <p className="text-zinc-400 text-sm mt-1">XAUUSD &#183; Vantage &#183; in EUR</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -189,9 +203,7 @@ export default function NewTradePage() {
                 className="w-full mt-1.5 px-4 py-3 bg-bg-elevated border border-bg-border rounded-xl text-white focus:outline-none focus:border-gold-500"
               >
                 {accounts.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
+                  <option key={a.id} value={a.id}>{a.name}</option>
                 ))}
               </select>
             </div>
@@ -200,208 +212,104 @@ export default function NewTradePage() {
           <div>
             <Label>Richtung</Label>
             <div className="grid grid-cols-2 gap-2 mt-1.5">
-              <button
-                type="button"
-                onClick={() => update("direction", "long")}
-                className={cn(
-                  "py-3 rounded-xl font-semibold transition",
+              <button type="button" onClick={() => update("direction", "long")}
+                className={cn("py-3 rounded-xl font-semibold transition",
                   form.direction === "long"
                     ? "bg-success/20 border border-success/40 text-success"
-                    : "bg-bg-elevated border border-bg-border text-zinc-400"
-                )}
-              >
-                ▲ LONG
+                    : "bg-bg-elevated border border-bg-border text-zinc-400")}>
+                &#9650; LONG
               </button>
-              <button
-                type="button"
-                onClick={() => update("direction", "short")}
-                className={cn(
-                  "py-3 rounded-xl font-semibold transition",
+              <button type="button" onClick={() => update("direction", "short")}
+                className={cn("py-3 rounded-xl font-semibold transition",
                   form.direction === "short"
                     ? "bg-danger/20 border border-danger/40 text-danger"
-                    : "bg-bg-elevated border border-bg-border text-zinc-400"
-                )}
-              >
-                ▼ SHORT
+                    : "bg-bg-elevated border border-bg-border text-zinc-400")}>
+                &#9660; SHORT
               </button>
             </div>
           </div>
         </div>
 
         <div className="bg-bg-card border border-bg-border rounded-2xl p-5 space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold text-gold-400 uppercase tracking-wider">
-              Pre-Trade Plan
-            </h3>
-          </div>
+          <h3 className="text-sm font-semibold text-gold-400 uppercase tracking-wider">Pre-Trade Plan</h3>
           <div>
             <Label>Setup</Label>
-            <input
-              type="text"
-              value={form.setup}
-              onChange={(e) => update("setup", e.target.value)}
-              placeholder="z.B. Breakout, FVG, Liquidity Sweep"
-              className={inputCls}
-            />
+            <input type="text" value={form.setup} onChange={(e) => update("setup", e.target.value)}
+              placeholder="z.B. Breakout, FVG, Liquidity Sweep" className={inputCls} />
           </div>
           <div>
-            <Label>Begründung</Label>
-            <textarea
-              value={form.reasoning}
-              onChange={(e) => update("reasoning", e.target.value)}
-              placeholder="Warum machst du diesen Trade?"
-              rows={2}
-              className={inputCls}
-            />
+            <Label>Begr&#252;ndung</Label>
+            <textarea value={form.reasoning} onChange={(e) => update("reasoning", e.target.value)}
+              placeholder="Warum machst du diesen Trade?" rows={2} className={inputCls} />
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
               <Label>Entry geplant</Label>
-              <input
-                type="number"
-                step="0.01"
-                value={form.planned_entry}
-                onChange={(e) => update("planned_entry", e.target.value)}
-                placeholder="2650.50"
-                className={inputCls}
-              />
+              <input type="number" step="0.01" value={form.planned_entry} onChange={(e) => update("planned_entry", e.target.value)} placeholder="2650.50" className={inputCls} />
             </div>
             <div>
               <Label>Stop</Label>
-              <input
-                type="number"
-                step="0.01"
-                value={form.planned_stop}
-                onChange={(e) => update("planned_stop", e.target.value)}
-                placeholder="2645.00"
-                className={inputCls}
-              />
+              <input type="number" step="0.01" value={form.planned_stop} onChange={(e) => update("planned_stop", e.target.value)} placeholder="2645.00" className={inputCls} />
             </div>
             <div>
               <Label>Target</Label>
-              <input
-                type="number"
-                step="0.01"
-                value={form.planned_target}
-                onChange={(e) => update("planned_target", e.target.value)}
-                placeholder="2660.00"
-                className={inputCls}
-              />
+              <input type="number" step="0.01" value={form.planned_target} onChange={(e) => update("planned_target", e.target.value)} placeholder="2660.00" className={inputCls} />
             </div>
           </div>
           <div>
             <Label>Lot Size</Label>
-            <input
-              type="number"
-              step="0.01"
-              value={form.lot_size}
-              onChange={(e) => update("lot_size", e.target.value)}
-              className={inputCls}
-            />
+            <input type="number" step="0.01" value={form.lot_size} onChange={(e) => update("lot_size", e.target.value)} className={inputCls} />
           </div>
         </div>
 
+        {/* Pre-Trading-Checklist */}
+        <ChecklistSection
+          items={checklistItems}
+          checked={checkedItems}
+          onChange={handleChecklistChange}
+        />
+
         <div className="bg-bg-card border border-bg-border rounded-2xl p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gold-400 uppercase tracking-wider">
-              Ausführung
-            </h3>
-            <select
-              value={form.status}
-              onChange={(e) => update("status", e.target.value as any)}
-              className="text-xs bg-bg-elevated border border-bg-border rounded-lg px-2 py-1 text-white"
-            >
+            <h3 className="text-sm font-semibold text-gold-400 uppercase tracking-wider">Ausf&#252;hrung</h3>
+            <select value={form.status} onChange={(e) => update("status", e.target.value as any)}
+              className="text-xs bg-bg-elevated border border-bg-border rounded-lg px-2 py-1 text-white">
               <option value="planned">Geplant</option>
               <option value="open">Offen</option>
               <option value="closed">Geschlossen</option>
             </select>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Tatsächlicher Entry</Label>
-              <input
-                type="number"
-                step="0.01"
-                value={form.actual_entry}
-                onChange={(e) => update("actual_entry", e.target.value)}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <Label>Exit</Label>
-              <input
-                type="number"
-                step="0.01"
-                value={form.actual_exit}
-                onChange={(e) => update("actual_exit", e.target.value)}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <Label>Entry-Zeit</Label>
-              <input
-                type="datetime-local"
-                value={form.entry_time}
-                onChange={(e) => update("entry_time", e.target.value)}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <Label>Exit-Zeit</Label>
-              <input
-                type="datetime-local"
-                value={form.exit_time}
-                onChange={(e) => update("exit_time", e.target.value)}
-                className={inputCls}
-              />
-            </div>
+            <div><Label>Tats&#228;chlicher Entry</Label><input type="number" step="0.01" value={form.actual_entry} onChange={(e) => update("actual_entry", e.target.value)} className={inputCls} /></div>
+            <div><Label>Exit</Label><input type="number" step="0.01" value={form.actual_exit} onChange={(e) => update("actual_exit", e.target.value)} className={inputCls} /></div>
+            <div><Label>Entry-Zeit</Label><input type="datetime-local" value={form.entry_time} onChange={(e) => update("entry_time", e.target.value)} className={inputCls} /></div>
+            <div><Label>Exit-Zeit</Label><input type="datetime-local" value={form.exit_time} onChange={(e) => update("exit_time", e.target.value)} className={inputCls} /></div>
           </div>
           <div>
             <Label>Notizen</Label>
-            <textarea
-              value={form.notes}
-              onChange={(e) => update("notes", e.target.value)}
-              placeholder="Was lief gut? Fehler? Beobachtungen?"
-              rows={3}
-              className={inputCls}
-            />
+            <textarea value={form.notes} onChange={(e) => update("notes", e.target.value)}
+              placeholder="Was lief gut? Fehler? Beobachtungen?" rows={3} className={inputCls} />
           </div>
         </div>
 
-        {/* Tags zuweisen */}
         {availableTags.length > 0 && (
           <div className="bg-bg-card border border-bg-border rounded-2xl p-5">
-            <h3 className="text-sm font-semibold text-gold-400 uppercase tracking-wider mb-3">
-              Tags
-            </h3>
-            <TagChips
-              tags={availableTags}
-              selectedIds={selectedTagIds}
-              onChange={setSelectedTagIds}
-              mode="edit"
-            />
+            <h3 className="text-sm font-semibold text-gold-400 uppercase tracking-wider mb-3">Tags</h3>
+            <TagChips tags={availableTags} selectedIds={selectedTagIds} onChange={setSelectedTagIds} mode="edit" />
           </div>
         )}
 
         {error && (
-          <div className="text-sm text-danger bg-danger/10 border border-danger/30 rounded-lg px-3 py-2">
-            {error}
-          </div>
+          <div className="text-sm text-danger bg-danger/10 border border-danger/30 rounded-lg px-3 py-2">{error}</div>
         )}
 
         <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="flex-1 py-3 bg-bg-card border border-bg-border text-zinc-300 font-medium rounded-xl hover:bg-bg-elevated transition"
-          >
+          <button type="button" onClick={() => router.back()}
+            className="flex-1 py-3 bg-bg-card border border-bg-border text-zinc-300 font-medium rounded-xl hover:bg-bg-elevated transition">
             Abbrechen
           </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex-1 py-3 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-bg font-semibold rounded-xl transition disabled:opacity-50 shadow-md shadow-gold-500/20"
-          >
+          <button type="submit" disabled={loading}
+            className="flex-1 py-3 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-400 hover:to-gold-500 text-bg font-semibold rounded-xl transition disabled:opacity-50 shadow-md shadow-gold-500/20">
             {loading ? "Speichern..." : "Trade speichern"}
           </button>
         </div>
