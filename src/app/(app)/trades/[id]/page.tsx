@@ -7,6 +7,9 @@ import DeleteTradeButton from "@/components/DeleteTradeButton";
 import TradeChartLive from "@/components/TradeChartLive";
 import TagChips from "@/components/TagChips";
 import { loadTagsForTrade } from "@/lib/tags";
+import { calculateTradeScore } from "@/lib/disciplineScore";
+import type { TradeCompletion } from "@/lib/disciplineScore";
+import type { ChecklistItem } from "@/lib/checklist";
 
 export const dynamic = "force-dynamic";
 
@@ -33,8 +36,30 @@ export default async function TradeDetailPage({
 
   if (!account) redirect("/dashboard");
 
-  // Tags des Trades laden
+  // Tags + Checklist laden
   const tradeTags = await loadTagsForTrade(supabase, trade.id);
+
+  let checklistItems: ChecklistItem[] = [];
+  let checklistCompletions: TradeCompletion[] = [];
+  if (trade.checklist_used) {
+    const [{ data: items }, { data: comps }] = await Promise.all([
+      supabase
+        .from("checklist_items")
+        .select("*")
+        .eq("user_id", trade.user_id)
+        .order("sort_order"),
+      supabase
+        .from("trade_checklist_completions")
+        .select("trade_id, item_id, is_checked")
+        .eq("trade_id", trade.id),
+    ]);
+    checklistItems = (items ?? []) as ChecklistItem[];
+    checklistCompletions = (comps ?? []) as TradeCompletion[];
+  }
+  const checklistScore = calculateTradeScore(
+    Boolean(trade.checklist_used),
+    checklistCompletions
+  );
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
@@ -162,6 +187,76 @@ export default async function TradeDetailPage({
       )}
 
       {/* Notizen */}
+      {/* Pre-Trading-Checklist */}
+      {trade.checklist_used && checklistItems.length > 0 && (
+        <div className="bg-bg-card border border-bg-border rounded-2xl p-5 md:p-6 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gold-400 uppercase tracking-wider">
+              Pre-Trading-Checklist
+            </h3>
+            {checklistScore !== null && (
+              <span className={
+                checklistScore >= 80 ? "text-sm font-bold text-success" :
+                checklistScore >= 50 ? "text-sm font-bold text-yellow-400" :
+                "text-sm font-bold text-danger"
+              }>
+                Score: {checklistScore}%
+              </span>
+            )}
+          </div>
+          <div className="space-y-2">
+            {checklistItems.map((item) => {
+              const comp = checklistCompletions.find((c) => c.item_id === item.id);
+              const isChecked = comp?.is_checked ?? false;
+              return (
+                <div key={item.id} className="flex items-start gap-2.5">
+                  <div className={
+                    "mt-0.5 w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center " +
+                    (isChecked ? "bg-gold-500 border-gold-500" : "bg-bg-elevated border-bg-border")
+                  }>
+                    {isChecked && (
+                      <svg className="w-2.5 h-2.5 text-bg" fill="none" viewBox="0 0 10 10">
+                        <path d="M1.5 5L4 7.5L8.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                  <span className={isChecked ? "text-sm text-white" : "text-sm text-zinc-500 line-through decoration-zinc-600"}>
+                    {item.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          {checklistScore !== null && (
+            <div className="pt-2 border-t border-bg-border">
+              <div className="h-1.5 bg-bg-elevated rounded-full overflow-hidden">
+                <div
+                  className={
+                    "h-full rounded-full transition-all " +
+                    (checklistScore >= 80 ? "bg-success" : checklistScore >= 50 ? "bg-yellow-400" : "bg-danger")
+                  }
+                  style={{ width: checklistScore + "%" }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {!trade.checklist_used && !trade.imported_at && (
+        <div className="bg-bg-card border border-bg-border rounded-2xl p-4 flex items-center justify-between gap-3">
+          <p className="text-xs text-zinc-600">Keine Checklist f&#252;r diesen Trade genutzt.</p>
+          <Link href={"/trades/" + trade.id + "/edit"}
+            className="text-xs text-gold-400 hover:underline flex-shrink-0">
+            Jetzt nachpflegen
+          </Link>
+        </div>
+      )}
+      {trade.imported_at && !trade.checklist_used && (
+        <div className="bg-bg-card border border-bg-border rounded-2xl p-4">
+          <p className="text-xs text-zinc-600">Importierter Trade &#8212; Checklist nicht verf&#252;gbar.</p>
+        </div>
+      )}
+
       {trade.notes && (
         <div className="bg-bg-card border border-bg-border rounded-2xl p-5 md:p-6">
           <h3 className="text-xs font-semibold text-gold-400 uppercase tracking-wider mb-2">
