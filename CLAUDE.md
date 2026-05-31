@@ -39,25 +39,33 @@ Etappe 18 (Erweiterte Analytics) — ABGESCHLOSSEN:
 - Tag-Performance + Setup-Performance: zeigen nur gewählte Metrik mit ausführlicher Kontext-Zeile
 
 Etappe 19 (Reviews-System) — ABGESCHLOSSEN:
-- `src/lib/reviewTemplates.ts`: WEEKLY_TEMPLATE (7 Fragen) + MONTHLY_TEMPLATE (5 Fragen)
-- `src/lib/reviews.ts`: Review-Typ, calculateReviewStats(), getCurrentPeriodBounds(), getPreviousPeriodBounds(), isReviewDue(), parseTradeReferences(), renderTextWithTradeLinks()
-- `src/app/(app)/reviews/page.tsx`: Liste aller Reviews mit Buttons "Wochenreview" + "Monatsreview"
-- `src/components/ReviewsListClient.tsx`: Filter-Tabs (Alle/Wochenreviews/Monatsreviews/Entwürfe), Review-Cards mit Period-Badge + Status-Badge + Vorschau
-- `src/app/(app)/reviews/new/page.tsx`: Server-Komponente, lädt Trades+Stats für Zeitraum, übergibt an Editor
-- `src/components/ReviewEditorClient.tsx`: 2-Spalten-Layout (Desktop: Form+Sidebar, Mobile: gestapelt+einklappbar), Auto-Save (1s Debounce), Lazy-Create beim ersten Speichern, Abschließen-Workflow mit Bestätigungsdialog, "Trade als #ID kopieren"-Button in Sidebar
-- `src/app/(app)/reviews/[id]/page.tsx`: Draft→Editor, Submitted→Detailansicht mit Trade-Referenz-Links
-- `src/components/ReviewReopenButton.tsx`: "Wieder öffnen" mit Inline-Bestätigung
-- `src/components/ReviewDueBanner.tsx`: Dashboard-Banner wenn Review fällig (Sonntag/Montag für Weekly, 1.–3. für Monthly), dismissbar
-- `src/components/AppShell.tsx`: "Reviews" + BookOpen-Icon in Desktop-Navigation
-- `src/components/DashboardClient.tsx`: ReviewDueBanner eingebaut (über GoalsWidget)
-- Trade-Verlinkung via #UUID-Pattern in Antworten, in Detailansicht als klickbare Links gerendert
-- DB-Migration: period_type, period_start, period_end, status, answers (jsonb), submitted_at, updated_at + Index reviews_user_period
+- Wochen- und Monatsreviews, Auto-Save, Lazy-Create, Trade-Referenz-Links
+- Dashboard-Banner wenn Review fällig (Sonntag/Montag für Weekly, 1.–3. für Monthly)
+- "Reviews"-Tab in Navigation (BookOpen-Icon)
+
+Etappe 20 (Pre-Trading-Checklist + Disziplin-Score) — ABGESCHLOSSEN:
+- `src/lib/checklist.ts`: ChecklistItem-Typ, DEFAULT_CHECKLIST_ITEMS (8 Items), ensureDefaultChecklistItems()
+- `src/lib/disciplineScore.ts`: calculateTradeScore, calculatePeriodScore, calculatePerItemCompliance, calculateScoreVsPnlCorrelation
+- `src/app/actions/checklist.ts`: Server Actions für CRUD + saveTradeChecklistAction
+- `src/components/ChecklistSection.tsx`: Checklist-Block für Trade-Formulare (Live-Score-Bar)
+- `src/components/ChecklistManager.tsx`: Settings-Verwaltung mit Up/Down, Inline-Edit, Add, Reset
+- `src/components/DisciplineScoreWidget.tsx`: Dashboard-Widget mit Score-Ring, Woche/Vorwoche/All-Time
+- `src/components/DisciplineCorrelation.tsx`: 3 Buckets (Hoch/Mittel/Niedrig) mit P/L-Vergleich + Insight
+- `src/components/ItemComplianceList.tsx`: Compliance-Tabelle sortiert nach schlechtester Rate
+- Settings: neuer Tab "Checklist" (ist jetzt Default-Tab)
+- Dashboard: DisciplineScoreWidget unter StreakWidget, über Equity-Chart
+- Analytics: neue Sektion "Disziplin & Performance" mit Correlation + Compliance-List
+- Trade-Form (new + edit): Checklist-Sektion zwischen Pre-Trade-Plan und Ausführung
+- Trade-Detail: zeigt Checklist-Stand mit Score, oder "Jetzt nachpflegen"-Link
+- Importierte Trades: "Importierter Trade — Checklist nicht verfügbar"
+- Score-Farben: <50% rot, 50–80% gelb, >80% grün (konsistent überall)
 
 ## Database-Schema (Supabase, RLS überall aktiv)
-8 Tabellen: profiles, accounts, trades, tags, trade_tags, screenshots, goals, reviews
-- reviews: id, user_id, period_type (weekly/monthly), period_start (date), period_end (date), status (draft/submitted), answers (jsonb), submitted_at (timestamptz), created_at, updated_at
-- trades: exchange_rate, broker_ticket_id, imported_at
-- profiles: streak_mode, sound_enabled, active_account_id, celebrated_goal_ids
+10 Tabellen: profiles, accounts, trades, tags, trade_tags, screenshots, goals, reviews, checklist_items, trade_checklist_completions
+- checklist_items: id, user_id, "label", description, sort_order, is_active, created_at, updated_at
+- trade_checklist_completions: trade_id, item_id, is_checked (PK: trade_id+item_id)
+- trades: neu checklist_used (boolean, default false)
+- reviews: id, user_id, period_type, period_start, period_end, status, answers (jsonb), submitted_at, updated_at
 
 ## Wichtige Technische Details
 - Datei-Struktur: src/app/(app)/... für Auth-Seiten, src/lib/ für Hilfsfunktionen
@@ -66,8 +74,9 @@ Etappe 19 (Reviews-System) — ABGESCHLOSSEN:
 - Unicode-Escape-Sequenzen (\uXXXX) NICHT in JSX — HTML-Entities verwenden (&#NNNN;)
 - Keine Template-Literals in JSX-Attributen — cn() oder Konkatenation
 - TWELVEDATA_API_KEY nur server-side (Vercel Env Vars)
+- checklist_items.label muss als "label" (gequotet) in SQL angesprochen werden (reserviertes Wort)
 
 ## Roadmap
-- Phase 3: Pre-Trading-Checkliste, Disziplin-Score, PDF-Export
+- Phase 3: PDF-Export, Disziplin-Score in Reviews integrieren
 - Phase 4: Capacitor iOS-App, MT5-EA-Bridge für Realtime-Trade-Sync
 - Offen: MT5-Import testen (User muss erst Vantage-Export laden)
