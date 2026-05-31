@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import TagManager from "@/components/TagManager";
+import ChecklistManager from "@/components/ChecklistManager";
 import { createClient } from "@/lib/supabase/client";
 import {
   type UserPreferences,
@@ -12,17 +13,18 @@ import {
 } from "@/lib/userPreferences";
 import { Volume2, VolumeX, Flame, Calendar } from "lucide-react";
 
-type Tab = "tags" | "konto" | "profil" | "belohnungen";
+type Tab = "checklist" | "tags" | "konto" | "profil" | "belohnungen";
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "tags", label: "Tags" },
-  { id: "konto", label: "Konto" },
-  { id: "profil", label: "Profil" },
+  { id: "checklist", label: "Checklist" },
+  { id: "tags",      label: "Tags" },
+  { id: "konto",     label: "Konto" },
+  { id: "profil",    label: "Profil" },
   { id: "belohnungen", label: "Belohnungen" },
 ];
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<Tab>("tags");
+  const [activeTab, setActiveTab] = useState<Tab>("checklist");
   const [prefs, setPrefs] = useState<UserPreferences>(DEFAULT_PREFERENCES);
   const [prefsLoaded, setPrefsLoaded] = useState(false);
 
@@ -67,7 +69,7 @@ export default function SettingsPage() {
           Einstellungen
         </h1>
         <p className="text-zinc-400 text-sm mt-1">
-          Verwalte deine Tags, Konto-Daten und Profil.
+          Verwalte deine Checklist, Tags, Konto-Daten und Profil.
         </p>
       </div>
 
@@ -79,14 +81,20 @@ export default function SettingsPage() {
             className={cn(
               "flex-1 min-w-[72px] py-2 px-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
               activeTab === tab.id
-                ? "bg-gold-500/20 border border-gold-500/40 text-gold-400"
-                : "text-zinc-400 hover:text-zinc-300"
+                ? "bg-bg-elevated text-white shadow-sm"
+                : "text-zinc-500 hover:text-zinc-300"
             )}
           >
             {tab.label}
           </button>
         ))}
       </div>
+
+      {activeTab === "checklist" && (
+        <div className="bg-bg-card border border-bg-border rounded-2xl p-5">
+          <ChecklistManager />
+        </div>
+      )}
 
       {activeTab === "tags" && <TagManager />}
 
@@ -161,12 +169,7 @@ export default function SettingsPage() {
                 )}
               >
                 <div className="flex items-center gap-2 mb-1.5">
-                  <Flame
-                    className={cn(
-                      "w-4 h-4",
-                      prefs.streak_mode === "trading_only" ? "text-gold-400" : "text-zinc-500"
-                    )}
-                  />
+                  <Flame className={cn("w-4 h-4", prefs.streak_mode === "trading_only" ? "text-gold-400" : "text-zinc-500")} />
                   <span className="text-sm font-semibold">Nur Trading-Tage</span>
                 </div>
                 <p className="text-[11px] text-zinc-500 leading-relaxed">
@@ -184,12 +187,7 @@ export default function SettingsPage() {
                 )}
               >
                 <div className="flex items-center gap-2 mb-1.5">
-                  <Calendar
-                    className={cn(
-                      "w-4 h-4",
-                      prefs.streak_mode === "all_weekdays" ? "text-gold-400" : "text-zinc-500"
-                    )}
-                  />
+                  <Calendar className={cn("w-4 h-4", prefs.streak_mode === "all_weekdays" ? "text-gold-400" : "text-zinc-500")} />
                   <span className="text-sm font-semibold">Alle Werktage</span>
                 </div>
                 <p className="text-[11px] text-zinc-500 leading-relaxed">
