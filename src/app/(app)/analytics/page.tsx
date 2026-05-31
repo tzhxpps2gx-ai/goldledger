@@ -4,10 +4,15 @@ import TagPerformanceClient from "@/components/TagPerformanceClient";
 import AnalyticsInsights from "@/components/AnalyticsInsights";
 import HourlyHeatmap from "@/components/HourlyHeatmap";
 import SetupStatsTable from "@/components/SetupStatsTable";
+import DisciplineCorrelation from "@/components/DisciplineCorrelation";
+import ItemComplianceList from "@/components/ItemComplianceList";
 import type { TagStat } from "@/lib/tags";
 import { getUserPreferences } from "@/lib/getUserPreferences";
 import { calculateHourlyHeatmap, findBestWorstHour } from "@/lib/timeStats";
 import { calculateSetupStats } from "@/lib/setupStats";
+import { calculatePerItemCompliance } from "@/lib/disciplineScore";
+import type { TradeCompletion } from "@/lib/disciplineScore";
+import type { ChecklistItem } from "@/lib/checklist";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +34,7 @@ export default async function AnalyticsPage() {
 
   const { data: trades } = await supabase
     .from("trades")
-    .select("id, symbol, direction, pnl_currency, r_multiple, entry_time, setup")
+    .select("id, symbol, direction, pnl_currency, r_multiple, entry_time, exit_time, setup, checklist_used, imported_at")
     .eq("account_id", account.id)
     .eq("status", "closed");
 
@@ -120,6 +125,46 @@ export default async function AnalyticsPage() {
   const setupStats = calculateSetupStats(typedTrades);
   const bestSetup = [...setupStats].sort((a, b) => b.totalPnl - a.totalPnl)[0] ?? null;
 
+  // Discipline-Daten
+  const { data: authUser } = await supabase.auth.getUser();
+  const userId = authUser.user?.id ?? "";
+
+  const { data: clItemsData } = await supabase
+    .from("checklist_items")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .order("sort_order");
+  const clItems = (clItemsData ?? []) as ChecklistItem[];
+
+  const trackedTradeIds = typedTrades
+    .filter((t) => (t as any).checklist_used)
+    .map((t) => t.id);
+
+  let completionsMap = new Map<string, TradeCompletion[]>();
+  if (trackedTradeIds.length > 0) {
+    const { data: comps } = await supabase
+      .from("trade_checklist_completions")
+      .select("trade_id, item_id, is_checked")
+      .in("trade_id", trackedTradeIds);
+    for (const c of comps ?? []) {
+      const arr = completionsMap.get(c.trade_id as string) ?? [];
+      arr.push(c as TradeCompletion);
+      completionsMap.set(c.trade_id as string, arr);
+    }
+  }
+
+  // All-time compliance (keine Zeitraum-Einschränkung)
+  const allStart = "2000-01-01";
+  const allEnd   = "2099-12-31";
+  const itemCompliance = calculatePerItemCompliance(
+    typedTrades as any,
+    completionsMap,
+    clItems,
+    allStart,
+    allEnd
+  );
+
   return (
     <div className="max-w-2xl mx-auto space-y-8">
       <div>
@@ -150,9 +195,28 @@ export default async function AnalyticsPage() {
 
       <SetupStatsTable trades={typedTrades} currency={account.currency} />
 
-      <p className="text-center text-xs text-zinc-600 pb-4">
-        Weitere Auswertungen folgen&#8230;
-      </p>
+      {/* Discipline-Sektion */}
+      <div id="discipline" className="space-y-4">
+        <div>
+          <h2 className="text-xs font-semibold text-gold-400 uppercase tracking-wider mb-1">
+            Disziplin &amp; Performance
+          </h2>
+          <p className="text-xs text-zinc-500">
+            Wie korreliert deine Checklist-Disziplin mit dem Trading-Ergebnis?
+          </p>
+        </div>
+        <DisciplineCorrelation
+          trades={typedTrades as any}
+          completionsMap={completionsMap}
+          currency={account.currency}
+        />
+        <div>
+          <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">
+            Regel-Compliance (schlechteste zuerst)
+          </h3>
+          <ItemComplianceList items={itemCompliance} />
+        </div>
+      </div>
     </div>
   );
 }
