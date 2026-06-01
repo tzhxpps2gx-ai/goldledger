@@ -191,9 +191,3 @@ export default function ChecklistSection({ items, checked, onChange }: Props) {
     </div>
   );
 }
-'''
-
-push("src/components/NewsClient.tsx",            NEWS_CLIENT,           None, "feat(news): NewsClient Komponente")
-push("src/app/(app)/news/page.tsx",              NEWS_PAGE,             None, "feat(news): /news Seite")
-push("src/components/NewsWarningModal.tsx",       NEWS_MODAL,            None, "feat(news): NewsWarningModal")
-push("src/components/NextNewsWidget.tsx",         NEXT_NEWS_WIDGET,      None, "feat(news): NextNewsWidget fürs Dashboard")
