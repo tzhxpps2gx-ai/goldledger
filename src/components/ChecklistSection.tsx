@@ -45,11 +45,10 @@ function useNewsStatus(hasNewsItem: boolean) {
         const supabase = createClient();
         const [newsData, { data: profile }] = await Promise.all([
           newsRes.ok ? newsRes.json() : Promise.resolve({ events: [] }),
-          supabase.auth.getUser().then(({ data: { user } }) =>
-            user
-              ? supabase.from("profiles").select("news_currencies,news_min_impact,news_warning_minutes").eq("id", user.id).maybeSingle()
-              : Promise.resolve({ data: null })
-          ),
+          supabase.auth.getUser().then(async ({ data: { user } }) => {
+            if (!user) return { data: null };
+            return supabase.from("profiles").select("news_currencies,news_min_impact,news_warning_minutes").eq("id", user.id).maybeSingle();
+          }),
         ]);
         const currencies: string[] = (profile as any)?.news_currencies ?? ["USD"];
         const minImpact: "low"|"medium"|"high" = (profile as any)?.news_min_impact ?? "medium";
