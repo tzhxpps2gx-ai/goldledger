@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import type { ChecklistItem } from "@/lib/checklist";
-import { Info } from "lucide-react";
+import { getNewsStatus, formatTimeUntil } from "@/lib/news/newsStatus";
+import type { NewsEvent } from "@/lib/news/forexFactoryFetcher";
 
 type Props = {
   items: ChecklistItem[];
@@ -21,6 +22,90 @@ function scoreBarColor(score: number): string {
   if (score >= 80) return "bg-success";
   if (score >= 50) return "bg-yellow-400";
   return "bg-danger";
+}
+
+function useNewsStatus(hasNewsItem: boolean) {
+  const [status, setStatus] = useState<{
+    loading: boolean;
+    text: string;
+    color: "green" | "red" | "gray";
+  }>({ loading: hasNewsItem, text: "", color: "gray" });
+
+  useEffect(() => {
+    if (!hasNewsItem) return;
+    async function load() {
+      try {
+        const now = new Date();
+        const to = new Date(now.getTime() + 4 * 60 * 60 * 1000).toISOString();
+        const params = new URLSearchParams({ from: now.toISOString(), to, minImpact: "low" });
+        const [newsRes, { createClient }] = await Promise.all([
+          fetch("/api/news?" + params.toString()),
+          import("@/lib/supabase/client"),
+        ]);
+        const supabase = createClient();
+        const [newsData, { data: profile }] = await Promise.all([
+          newsRes.ok ? newsRes.json() : Promise.resolve({ events: [] }),
+          supabase.auth.getUser().then(({ data: { user } }) =>
+            user
+              ? supabase.from("profiles").select("news_currencies,news_min_impact,news_warning_minutes").eq("id", user.id).maybeSingle()
+              : Promise.resolve({ data: null })
+          ),
+        ]);
+        const currencies: string[] = (profile as any)?.news_currencies ?? ["USD"];
+        const minImpact: "low"|"medium"|"high" = (profile as any)?.news_min_impact ?? "medium";
+        const warnMins: number = (profile as any)?.news_warning_minutes ?? 30;
+        const events: NewsEvent[] = newsData.events ?? [];
+        const st = getNewsStatus(events, currencies, minImpact, now, warnMins);
+
+        const timeStr = now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+
+        if (!newsRes.ok || events.length === 0 && newsData.stale) {
+          setStatus({ loading: false, text: "News-Status nicht verfügbar — manuell prüfen auf forexfactory.com", color: "gray" });
+        } else if (st.currentlyInWindow && st.windowEvents.length > 0) {
+          const e = st.windowEvents[0];
+          const mins = Math.round((new Date(e.event_datetime).getTime() - now.getTime()) / 60_000);
+          const countdown = formatTimeUntil(mins);
+          setStatus({
+            loading: false,
+            text: e.event_name + " um " + new Date(e.event_datetime).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" }) + " — " + countdown + " · Bitte vorsichtig",
+            color: "red",
+          });
+        } else {
+          setStatus({
+            loading: false,
+            text: "Keine relevante News in den nächsten " + warnMins + " Min (Stand: " + timeStr + ")",
+            color: "green",
+          });
+        }
+      } catch {
+        setStatus({ loading: false, text: "News-Status nicht verfügbar", color: "gray" });
+      }
+    }
+    load();
+  }, [hasNewsItem]);
+
+  return status;
+}
+
+function NewsStatusLine({ item }: { item: ChecklistItem }) {
+  const isNewsItem = item.label.toLowerCase().includes("news");
+  const status = useNewsStatus(isNewsItem);
+  if (!isNewsItem) return null;
+  if (status.loading) {
+    return <p className="text-[11px] text-zinc-600 mt-1 animate-pulse">News-Status wird geladen&#8230;</p>;
+  }
+  return (
+    <p className={cn(
+      "text-[11px] mt-1 px-2 py-1 rounded-lg",
+      status.color === "green" && "bg-success/10 text-success",
+      status.color === "red"   && "bg-danger/10 text-danger font-medium",
+      status.color === "gray"  && "text-zinc-500",
+    )}>
+      {status.color === "green" && "&#9679; "}
+      {status.color === "red"   && "&#9679; "}
+      {status.text}
+    </p>
+  );
 }
 
 export default function ChecklistSection({ items, checked, onChange }: Props) {
@@ -43,46 +128,46 @@ export default function ChecklistSection({ items, checked, onChange }: Props) {
         </p>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-3">
         {items.map((item) => (
-          <label
-            key={item.id}
-            className="flex items-start gap-3 cursor-pointer group"
-          >
-            <div className="mt-0.5 flex-shrink-0">
-              <input
-                type="checkbox"
-                checked={checked[item.id] ?? false}
-                onChange={(e) => onChange(item.id, e.target.checked)}
-                className="sr-only"
-              />
-              <div className={cn(
-                "w-4 h-4 rounded border flex items-center justify-center transition-colors",
-                checked[item.id]
-                  ? "bg-gold-500 border-gold-500"
-                  : "bg-bg-elevated border-bg-border group-hover:border-zinc-500"
-              )}>
-                {checked[item.id] && (
-                  <svg className="w-2.5 h-2.5 text-bg" fill="none" viewBox="0 0 10 10">
-                    <path d="M1.5 5L4 7.5L8.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+          <div key={item.id}>
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <div className="mt-0.5 flex-shrink-0">
+                <input
+                  type="checkbox"
+                  checked={checked[item.id] ?? false}
+                  onChange={(e) => onChange(item.id, e.target.checked)}
+                  className="sr-only"
+                />
+                <div className={cn(
+                  "w-4 h-4 rounded border flex items-center justify-center transition-colors",
+                  checked[item.id]
+                    ? "bg-gold-500 border-gold-500"
+                    : "bg-bg-elevated border-bg-border group-hover:border-zinc-500"
+                )}>
+                  {checked[item.id] && (
+                    <svg className="w-2.5 h-2.5 text-bg" fill="none" viewBox="0 0 10 10">
+                      <path d="M1.5 5L4 7.5L8.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className={cn(
+                  "text-sm transition-colors",
+                  checked[item.id] ? "text-white" : "text-zinc-300"
+                )}>
+                  {item.label}
+                </span>
+                {item.description && (
+                  <p className="text-[11px] text-zinc-600 mt-0.5 leading-relaxed">
+                    {item.description}
+                  </p>
                 )}
               </div>
-            </div>
-            <div className="flex-1 min-w-0">
-              <span className={cn(
-                "text-sm transition-colors",
-                checked[item.id] ? "text-white" : "text-zinc-300"
-              )}>
-                {item.label}
-              </span>
-              {item.description && (
-                <p className="text-[11px] text-zinc-600 mt-0.5 leading-relaxed">
-                  {item.description}
-                </p>
-              )}
-            </div>
-          </label>
+            </label>
+            <NewsStatusLine item={item} />
+          </div>
         ))}
       </div>
 
@@ -106,3 +191,9 @@ export default function ChecklistSection({ items, checked, onChange }: Props) {
     </div>
   );
 }
+'''
+
+push("src/components/NewsClient.tsx",            NEWS_CLIENT,           None, "feat(news): NewsClient Komponente")
+push("src/app/(app)/news/page.tsx",              NEWS_PAGE,             None, "feat(news): /news Seite")
+push("src/components/NewsWarningModal.tsx",       NEWS_MODAL,            None, "feat(news): NewsWarningModal")
+push("src/components/NextNewsWidget.tsx",         NEXT_NEWS_WIDGET,      None, "feat(news): NextNewsWidget fürs Dashboard")
