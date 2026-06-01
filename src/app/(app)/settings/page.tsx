@@ -42,6 +42,7 @@ export default function SettingsPage() {
         .then(({ data }) => {
           if (data) {
             setPrefs({
+              ...DEFAULT_PREFERENCES,
               streak_mode: (data.streak_mode as StreakMode) ?? DEFAULT_PREFERENCES.streak_mode,
               sound_enabled: data.sound_enabled ?? DEFAULT_PREFERENCES.sound_enabled,
               active_account_id: (data.active_account_id as string | null) ?? null,
