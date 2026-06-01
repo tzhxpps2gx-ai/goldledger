@@ -91,7 +91,7 @@ function NewsStatusLine({ item }: { item: ChecklistItem }) {
   const status = useNewsStatus(isNewsItem);
   if (!isNewsItem) return null;
   if (status.loading) {
-    return <p className="text-[11px] text-zinc-600 mt-1 animate-pulse">News-Status wird geladen&#8230;</p>;
+    return <p className="text-[11px] text-zinc-600 mt-1 animate-pulse">News-Status wird geladen…</p>;
   }
   return (
     <p className={cn(
@@ -100,8 +100,9 @@ function NewsStatusLine({ item }: { item: ChecklistItem }) {
       status.color === "red"   && "bg-danger/10 text-danger font-medium",
       status.color === "gray"  && "text-zinc-500",
     )}>
-      {status.color === "green" && "&#9679; "}
-      {status.color === "red"   && "&#9679; "}
+      {(status.color === "green" || status.color === "red") && (
+        <span className="mr-1">●</span>
+      )}
       {status.text}
     </p>
   );
@@ -170,7 +171,6 @@ export default function ChecklistSection({ items, checked, onChange }: Props) {
         ))}
       </div>
 
-      {/* Score-Footer */}
       <div className="pt-2 border-t border-bg-border space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-xs text-zinc-500">
