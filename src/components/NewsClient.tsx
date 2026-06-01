@@ -117,7 +117,7 @@ export default function NewsClient({ initialCurrencies, initialMinImpact }: Prop
           {([
             { v: "today",    l: "Heute" },
             { v: "week",     l: "Diese Woche" },
-            { v: "nextweek", l: "N&#228;chste Woche" },
+            { v: "nextweek", l: "Nächste Woche" },
             { v: "twoweeks", l: "14 Tage" },
           ] as const).map(({ v, l }) => (
             <button key={v} type="button" onClick={() => setRange(v)}
@@ -127,8 +127,9 @@ export default function NewsClient({ initialCurrencies, initialMinImpact }: Prop
                   ? "bg-gold-500/20 border border-gold-500/40 text-gold-400"
                   : "bg-bg-elevated border border-bg-border text-zinc-400 hover:text-white"
               )}
-              dangerouslySetInnerHTML={{ __html: l }}
-            />
+            >
+              {l}
+            </button>
           ))}
         </div>
 
@@ -169,7 +170,7 @@ export default function NewsClient({ initialCurrencies, initialMinImpact }: Prop
       <div className="flex items-center justify-between gap-3 text-[11px] text-zinc-500">
         <span>
           {lastFetched ? "Zuletzt aktualisiert: " + formatLastFetched(lastFetched) : ""}
-          {stale && " · Daten m&#246;glicherweise veraltet"}
+          {stale && " · Daten möglicherweise veraltet"}
         </span>
         <button type="button" onClick={load} disabled={loading}
           className="inline-flex items-center gap-1 hover:text-white transition disabled:opacity-40">
@@ -185,7 +186,7 @@ export default function NewsClient({ initialCurrencies, initialMinImpact }: Prop
         </div>
       ) : grouped.length === 0 ? (
         <div className="bg-bg-card border border-bg-border rounded-2xl p-8 text-center">
-          <p className="text-zinc-500 text-sm">Keine News im gew&#228;hlten Zeitraum.</p>
+          <p className="text-zinc-500 text-sm">Keine News im gewählten Zeitraum.</p>
         </div>
       ) : (
         <div className="space-y-6">
