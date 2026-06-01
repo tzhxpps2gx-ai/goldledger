@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import TagManager from "@/components/TagManager";
 import ChecklistManager from "@/components/ChecklistManager";
+import NewsPreferences from "@/components/NewsPreferences";
 import { createClient } from "@/lib/supabase/client";
 import {
   type UserPreferences,
@@ -13,13 +14,14 @@ import {
 } from "@/lib/userPreferences";
 import { Volume2, VolumeX, Flame, Calendar } from "lucide-react";
 
-type Tab = "checklist" | "tags" | "konto" | "profil" | "belohnungen";
+type Tab = "checklist" | "news" | "tags" | "konto" | "profil" | "belohnungen";
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "checklist", label: "Checklist" },
-  { id: "tags",      label: "Tags" },
-  { id: "konto",     label: "Konto" },
-  { id: "profil",    label: "Profil" },
+  { id: "checklist",   label: "Checklist" },
+  { id: "news",        label: "News" },
+  { id: "tags",        label: "Tags" },
+  { id: "konto",       label: "Konto" },
+  { id: "profil",      label: "Profil" },
   { id: "belohnungen", label: "Belohnungen" },
 ];
 
@@ -93,6 +95,18 @@ export default function SettingsPage() {
       {activeTab === "checklist" && (
         <div className="bg-bg-card border border-bg-border rounded-2xl p-5">
           <ChecklistManager />
+        </div>
+      )}
+
+      {activeTab === "news" && (
+        <div className="bg-bg-card border border-bg-border rounded-2xl p-5">
+          <div className="mb-5">
+            <h3 className="text-sm font-semibold text-white">News &amp; Markt-Events</h3>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              Konfiguriere deine News-Warnungen beim Trade-Anlegen.
+            </p>
+          </div>
+          <NewsPreferences />
         </div>
       )}
 
