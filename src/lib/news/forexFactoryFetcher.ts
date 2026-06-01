@@ -1,7 +1,7 @@
 export type NewsEvent = {
   id?: string;
   external_id: string | null;
-  event_datetime: string;   // ISO UTC
+  event_datetime: string;
   currency: string;
   impact: "low" | "medium" | "high";
   event_name: string;
@@ -36,10 +36,16 @@ export async function fetchForexFactoryNews(): Promise<NewsEvent[]> {
     FF_URLS.map(async (url) => {
       try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 10_000);
+        const timeout = setTimeout(() => controller.abort(), 15_000);
         const res = await fetch(url, {
           signal: controller.signal,
-          next: { revalidate: 0 },
+          cache: "no-store",
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Referer": "https://www.forexfactory.com/",
+          },
         });
         clearTimeout(timeout);
         if (!res.ok) {
