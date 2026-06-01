@@ -25,56 +25,47 @@ User hat KEINE Coding-Erfahrung — gerade vom GitHub-Web-Editor zu Claude Code 
 - SQL-Migrations NICHT selbst ausführen — dem User zeigen, er führt sie in Supabase aus
 - macOS TCC/Sandbox blockiert Write/Edit/Bash-Tools für src/ — Workaround: GitHub-API push
 
-## Aktueller Stand (Mai 2026)
+## Aktueller Stand (Juni 2026)
 
-Etappen 1–16 abgeschlossen (Auth, Dashboard, Trade-CRUD, Analytics, Tags, Ziele, Preferences, Streaks, Konfetti).
-
-Etappe 17 (MT5 Trade Import) — ABGESCHLOSSEN:
-- Parser + 51 Tests, 4-Phasen-Import-UI, Duplicate Detection, MT5-Badge
-- Ausstehend: MT5-Export aus Vantage (User konnte noch nicht exportieren → erinnern!)
-
-Etappe 18 (Erweiterte Analytics) — ABGESCHLOSSEN:
-- Zeit-Performance-Heatmap (5×24, Mo–Fr × 0–23 Uhr), Toggle P/L/Win Rate/Anzahl, Hover-Tooltip, Klick→Modal
-- Setup-Performance-Tabelle (sortierbar), Insights-Cards (Beste/Schlechteste Stunde, Bestes Setup)
-- Tag-Performance + Setup-Performance: zeigen nur gewählte Metrik mit ausführlicher Kontext-Zeile
-
-Etappe 19 (Reviews-System) — ABGESCHLOSSEN:
-- Wochen- und Monatsreviews, Auto-Save, Lazy-Create, Trade-Referenz-Links
-- Dashboard-Banner wenn Review fällig (Sonntag/Montag für Weekly, 1.–3. für Monthly)
-- "Reviews"-Tab in Navigation (BookOpen-Icon)
+Etappen 1–19 abgeschlossen (Auth, Dashboard, Trade-CRUD, Analytics, Tags, Ziele, Preferences, Streaks, Konfetti, MT5-Import, Erw. Analytics, Reviews).
 
 Etappe 20 (Pre-Trading-Checklist + Disziplin-Score) — ABGESCHLOSSEN:
-- `src/lib/checklist.ts`: ChecklistItem-Typ, DEFAULT_CHECKLIST_ITEMS (8 Items), ensureDefaultChecklistItems()
-- `src/lib/disciplineScore.ts`: calculateTradeScore, calculatePeriodScore, calculatePerItemCompliance, calculateScoreVsPnlCorrelation
-- `src/app/actions/checklist.ts`: Server Actions für CRUD + saveTradeChecklistAction
-- `src/components/ChecklistSection.tsx`: Checklist-Block für Trade-Formulare (Live-Score-Bar)
-- `src/components/ChecklistManager.tsx`: Settings-Verwaltung mit Up/Down, Inline-Edit, Add, Reset
-- `src/components/DisciplineScoreWidget.tsx`: Dashboard-Widget mit Score-Ring, Woche/Vorwoche/All-Time
-- `src/components/DisciplineCorrelation.tsx`: 3 Buckets (Hoch/Mittel/Niedrig) mit P/L-Vergleich + Insight
-- `src/components/ItemComplianceList.tsx`: Compliance-Tabelle sortiert nach schlechtester Rate
-- Settings: neuer Tab "Checklist" (ist jetzt Default-Tab)
-- Dashboard: DisciplineScoreWidget unter StreakWidget, über Equity-Chart
-- Analytics: neue Sektion "Disziplin & Performance" mit Correlation + Compliance-List
-- Trade-Form (new + edit): Checklist-Sektion zwischen Pre-Trade-Plan und Ausführung
-- Trade-Detail: zeigt Checklist-Stand mit Score, oder "Jetzt nachpflegen"-Link
-- Importierte Trades: "Importierter Trade — Checklist nicht verfügbar"
-- Score-Farben: <50% rot, 50–80% gelb, >80% grün (konsistent überall)
+- Settings: Tab "Checklist" mit 8 Default-Items, inline Edit, Sort, Delete, Reset
+- Trade-Form (new+edit): ChecklistSection mit Live-Score-Bar
+- Dashboard: DisciplineScoreWidget (Score-Ring, Woche/Vorwoche/All-Time)
+- Analytics: Sektion "Disziplin & Performance" (3 Buckets + Compliance-List)
+- Score-Farben: <50% rot, 50-80% gelb, >80% grün
+
+Etappe 21 (ForexFactory News-Integration) — ABGESCHLOSSEN:
+- `src/lib/news/forexFactoryFetcher.ts`: fetchForexFactoryNews(), NewsEvent-Typ
+- `src/lib/news/newsStatus.ts`: getNewsStatus(), formatTimeUntil()
+- `src/app/api/news/route.ts`: GET /api/news mit 1h DB-Cache, upsert, Housekeeping
+- `src/app/(app)/news/page.tsx` + `src/components/NewsClient.tsx`: News-Seite mit Datum/Impact/Currency-Filter
+- `src/components/NewsWarningModal.tsx`: Bestätigungs-Modal beim Trade-Submit bei News im Warn-Zeitraum
+- `src/components/NextNewsWidget.tsx`: Dashboard-Widget mit Countdown zur nächsten News
+- `src/components/ChecklistSection.tsx`: News-Status-Anzeige unter News-Checklist-Item
+- `src/components/NewsPreferences.tsx`: Settings-Sektion für News-Präferenzen
+- Settings: neuer Tab "News" (Währungen, Impact, Warn-Zeitraum)
+- Dashboard: NextNewsWidget unter DisciplineScoreWidget
+- Navigation: "News"-Link (Newspaper-Icon) in AppShell
+- Warning-Modal: NUR bei /trades/new, nicht bei /trades/[id]/edit
+- ForexFactory-API: unofficial, defensiv programmiert (try-catch, 10s Timeout)
 
 ## Database-Schema (Supabase, RLS überall aktiv)
-10 Tabellen: profiles, accounts, trades, tags, trade_tags, screenshots, goals, reviews, checklist_items, trade_checklist_completions
-- checklist_items: id, user_id, "label", description, sort_order, is_active, created_at, updated_at
-- trade_checklist_completions: trade_id, item_id, is_checked (PK: trade_id+item_id)
-- trades: neu checklist_used (boolean, default false)
-- reviews: id, user_id, period_type, period_start, period_end, status, answers (jsonb), submitted_at, updated_at
+11 Tabellen: profiles, accounts, trades, tags, trade_tags, screenshots, goals, reviews, checklist_items, trade_checklist_completions, economic_news
+- economic_news: id, external_id, event_datetime, currency, impact (low/medium/high), event_name, forecast, previous, actual, fetched_at; UNIQUE(event_datetime,currency,event_name); RLS: authenticated read
+- profiles: neu news_currencies (text[], default '{"USD"}'), news_min_impact (text default 'medium'), news_warning_minutes (integer default 30)
+- checklist_items: "label" (quoted, reserviertes Wort in Postgres)
+- trades: checklist_used (boolean, default false)
 
 ## Wichtige Technische Details
 - Datei-Struktur: src/app/(app)/... für Auth-Seiten, src/lib/ für Hilfsfunktionen
 - Supabase Server/Client-Helper in src/lib/supabase/
-- Zeitzone Europe/Berlin: toLocaleString("sv-SE", {timeZone:"Europe/Berlin"}) → YYYY-MM-DD HH:MM:SS
+- Zeitzone Europe/Berlin: toLocaleString("sv-SE", {timeZone:"Europe/Berlin"}) → YYYY-MM-DD
 - Unicode-Escape-Sequenzen (\uXXXX) NICHT in JSX — HTML-Entities verwenden (&#NNNN;)
 - Keine Template-Literals in JSX-Attributen — cn() oder Konkatenation
 - TWELVEDATA_API_KEY nur server-side (Vercel Env Vars)
-- checklist_items.label muss als "label" (gequotet) in SQL angesprochen werden (reserviertes Wort)
+- Impact-Farben: rot=high, orange=medium, grau=low (konsistent überall)
 
 ## Roadmap
 - Phase 3: PDF-Export, Disziplin-Score in Reviews integrieren
