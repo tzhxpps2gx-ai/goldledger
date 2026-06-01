@@ -16,7 +16,6 @@ export async function GET(request: Request) {
   const currencies = url.searchParams.get("currencies")?.split(",").filter(Boolean) ?? [];
   const minImpact  = url.searchParams.get("minImpact") ?? "medium";
 
-  // Letztes Fetch-Datum aus DB prüfen
   const { data: latest } = await supabase
     .from("economic_news")
     .select("fetched_at")
@@ -41,7 +40,6 @@ export async function GET(request: Request) {
             freshEvents.map((e) => ({ ...e, fetched_at: now })),
             { onConflict: "event_datetime,currency,event_name", ignoreDuplicates: false }
           );
-        // Alte News bereinigen (>30 Tage)
         const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
         await supabase.from("economic_news").delete().lt("event_datetime", cutoff);
       } else {
@@ -57,12 +55,11 @@ export async function GET(request: Request) {
     .select("*")
     .order("event_datetime");
 
-  if (from) query = query.gte("event_datetime", from);
-  if (to)   query = query.lte("event_datetime", to);
+  if (from) query = query.gte("event_datetime", from + "T00:00:00.000Z");
+  if (to)   query = query.lte("event_datetime", to   + "T23:59:59.999Z");
   if (currencies.length > 0) query = query.in("currency", currencies);
   if (minImpact !== "low") {
-    const impacts =
-      minImpact === "high" ? ["high"] : ["medium", "high"];
+    const impacts = minImpact === "high" ? ["high"] : ["medium", "high"];
     query = query.in("impact", impacts);
   }
 
