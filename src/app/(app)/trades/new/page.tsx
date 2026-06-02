@@ -65,7 +65,7 @@ export default function NewTradePage() {
       const params = new URLSearchParams({ from: now.toISOString(), to, minImpact: "low" });
 
       const [{ data: accs }, { data: tagsData }, { data: clItems }] = await Promise.all([
-        supabase.from("accounts").select("*").eq("is_active", true),
+        supabase.from("accounts").select("*").eq("is_archived", false),
         supabase.from("tags").select("id, name, category, color").order("category").order("name"),
         getChecklistItemsAction(),
       ]);
@@ -259,7 +259,18 @@ export default function NewTradePage() {
           <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
             Neuer Trade
           </h1>
-          <p className="text-zinc-400 text-sm mt-1">XAUUSD &#183; Vantage &#183; in EUR</p>
+          <p className="text-zinc-400 text-sm mt-1">XAUUSD &#183; in EUR</p>
+          {accounts.length > 0 && (() => {
+            const acc = accounts.find((a: any) => a.id === form.account_id) ?? accounts[0];
+            const badge = { live: { label: "LIVE", cls: "bg-success/15 text-success border-success/30" }, demo: { label: "DEMO", cls: "bg-blue-500/15 text-blue-400 border-blue-500/30" }, prop: { label: "PROP", cls: "bg-gold-500/15 text-gold-400 border-gold-500/30" } }[acc?.account_type] ?? { label: "LIVE", cls: "bg-success/15 text-success border-success/30" };
+            return (
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-zinc-500 text-xs">Trade f&#252;r:</span>
+                <span className="text-xs text-white font-medium">{acc?.name}</span>
+                <span className={"px-1.5 py-0.5 rounded text-[10px] font-bold border " + badge.cls}>{badge.label}</span>
+              </div>
+            );
+          })()}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
