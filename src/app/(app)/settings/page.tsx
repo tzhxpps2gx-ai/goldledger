@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import TagManager from "@/components/TagManager";
 import ChecklistManager from "@/components/ChecklistManager";
 import NewsPreferences from "@/components/NewsPreferences";
+import AccountManager from "@/components/AccountManager";
 import { createClient } from "@/lib/supabase/client";
 import {
   type UserPreferences,
@@ -14,20 +15,20 @@ import {
 } from "@/lib/userPreferences";
 import { Volume2, VolumeX, Flame, Calendar } from "lucide-react";
 
-type Tab = "checklist" | "news" | "tags" | "konto" | "profil" | "belohnungen";
+type Tab = "konten" | "checklist" | "news" | "tags" | "profil" | "belohnungen";
 
 const TABS: { id: Tab; label: string }[] = [
+  { id: "konten",      label: "Konten" },
   { id: "checklist",   label: "Checklist" },
   { id: "news",        label: "News" },
   { id: "tags",        label: "Tags" },
-  { id: "konto",       label: "Konto" },
   { id: "profil",      label: "Profil" },
   { id: "belohnungen", label: "Belohnungen" },
 ];
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<Tab>("checklist");
-  const [prefs, setPrefs] = useState<UserPreferences>(DEFAULT_PREFERENCES);
+  const [activeTab, setActiveTab] = useState<Tab>("konten");
+  const [prefs, setPrefs]         = useState<UserPreferences>(DEFAULT_PREFERENCES);
   const [prefsLoaded, setPrefsLoaded] = useState(false);
 
   useEffect(() => {
@@ -72,7 +73,7 @@ export default function SettingsPage() {
           Einstellungen
         </h1>
         <p className="text-zinc-400 text-sm mt-1">
-          Verwalte deine Checklist, Tags, Konto-Daten und Profil.
+          Verwalte deine Konten, Checklist, Tags und Profil.
         </p>
       </div>
 
@@ -80,9 +81,10 @@ export default function SettingsPage() {
         {TABS.map((tab) => (
           <button
             key={tab.id}
+            type="button"
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              "flex-1 min-w-[72px] py-2 px-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
+              "flex-1 min-w-[64px] py-2 px-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
               activeTab === tab.id
                 ? "bg-bg-elevated text-white shadow-sm"
                 : "text-zinc-500 hover:text-zinc-300"
@@ -92,6 +94,12 @@ export default function SettingsPage() {
           </button>
         ))}
       </div>
+
+      {activeTab === "konten" && (
+        <div className="bg-bg-card border border-bg-border rounded-2xl p-5">
+          <AccountManager />
+        </div>
+      )}
 
       {activeTab === "checklist" && (
         <div className="bg-bg-card border border-bg-border rounded-2xl p-5">
@@ -112,14 +120,6 @@ export default function SettingsPage() {
       )}
 
       {activeTab === "tags" && <TagManager />}
-
-      {activeTab === "konto" && (
-        <div className="bg-bg-card border border-bg-border rounded-2xl p-8 text-center">
-          <div className="text-3xl mb-3">&#127974;</div>
-          <h2 className="text-base font-semibold text-white mb-2">Konto-Einstellungen</h2>
-          <p className="text-zinc-500 text-sm">Kommt bald.</p>
-        </div>
-      )}
 
       {activeTab === "profil" && (
         <div className="bg-bg-card border border-bg-border rounded-2xl p-8 text-center">
@@ -147,6 +147,7 @@ export default function SettingsPage() {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={toggleSound}
                 disabled={!prefsLoaded}
                 className={cn(
@@ -154,12 +155,10 @@ export default function SettingsPage() {
                   prefs.sound_enabled ? "bg-gold-500" : "bg-zinc-700"
                 )}
               >
-                <span
-                  className={cn(
-                    "absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform",
-                    prefs.sound_enabled && "translate-x-5"
-                  )}
-                />
+                <span className={cn(
+                  "absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform",
+                  prefs.sound_enabled && "translate-x-5"
+                )} />
               </button>
             </div>
           </div>
@@ -174,6 +173,7 @@ export default function SettingsPage() {
             </p>
             <div className="grid gap-2 sm:grid-cols-2">
               <button
+                type="button"
                 onClick={() => setStreakMode("trading_only")}
                 disabled={!prefsLoaded}
                 className={cn(
@@ -192,6 +192,7 @@ export default function SettingsPage() {
                 </p>
               </button>
               <button
+                type="button"
                 onClick={() => setStreakMode("all_weekdays")}
                 disabled={!prefsLoaded}
                 className={cn(
