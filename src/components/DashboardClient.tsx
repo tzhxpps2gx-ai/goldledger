@@ -21,6 +21,7 @@ import CelebrationConfetti from "@/components/CelebrationConfetti";
 import ReviewDueBanner from "@/components/ReviewDueBanner";
 import DisciplineScoreWidget from "@/components/DisciplineScoreWidget";
 import NextNewsWidget from "@/components/NextNewsWidget";
+import { TYPE_BADGE } from "@/components/AccountManager";
 import {
   type Goal,
   type TradeLike,
@@ -53,10 +54,12 @@ export default function DashboardClient({
   trades: Trade[];
   account: {
     name: string;
+    account_type: string;
     broker: string;
     currency: string;
     starting_balance: number;
     current_balance: number;
+    is_archived: boolean;
   };
   goals: Goal[];
   goalTrades: TradeLike[];
@@ -132,12 +135,22 @@ export default function DashboardClient({
           <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
             Dashboard
           </h1>
-          <p className="text-zinc-400 text-sm mt-1">
-            {account.name} · {account.broker} ·{" "}
-            <span className="text-gold-400">
+          <div className="flex items-center gap-2 flex-wrap mt-1">
+            <span className="text-zinc-400 text-sm">{account.name}</span>
+            {(() => {
+              const badge = TYPE_BADGE[account.account_type] ?? TYPE_BADGE.live;
+              return (
+                <span className={"px-1.5 py-0.5 rounded text-[10px] font-bold border " + badge.cls}>
+                  {badge.label}
+                </span>
+              );
+            })()}
+            {account.broker && <span className="text-zinc-500 text-sm">&#183; {account.broker}</span>}
+            <span className="text-zinc-500 text-sm">&#183;</span>
+            <span className="text-gold-400 text-sm">
               {formatCurrency(Number(account.current_balance), account.currency)}
             </span>
-          </p>
+          </div>
         </div>
       </div>
 
@@ -195,6 +208,16 @@ export default function DashboardClient({
       </div>
 
       <ReviewDueBanner />
+      {account.is_archived && (
+        <div className="bg-orange-500/15 border border-orange-500/30 rounded-xl px-4 py-3 flex items-start gap-2">
+          <span className="text-orange-400 text-sm font-medium flex-shrink-0">&#9888;</span>
+          <p className="text-sm text-orange-300">
+            Du arbeitest in einem archivierten Konto. Wechsel in den{" "}
+            <a href="/settings" className="underline hover:text-orange-200">Einstellungen</a>
+            {" "}zu einem aktiven Konto f&#252;r Live-Trading.
+          </p>
+        </div>
+      )}
 
       <GoalsWidget goals={goals} trades={goalTrades} currency={account.currency} />
 
