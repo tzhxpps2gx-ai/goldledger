@@ -262,7 +262,8 @@ export default function NewTradePage() {
           <p className="text-zinc-400 text-sm mt-1">XAUUSD &#183; in EUR</p>
           {accounts.length > 0 && (() => {
             const acc = accounts.find((a: any) => a.id === form.account_id) ?? accounts[0];
-            const badge = { live: { label: "LIVE", cls: "bg-success/15 text-success border-success/30" }, demo: { label: "DEMO", cls: "bg-blue-500/15 text-blue-400 border-blue-500/30" }, prop: { label: "PROP", cls: "bg-gold-500/15 text-gold-400 border-gold-500/30" } }[acc?.account_type] ?? { label: "LIVE", cls: "bg-success/15 text-success border-success/30" };
+            const TBADGE: Record<string, {label:string;cls:string}> = { live: { label: "LIVE", cls: "bg-success/15 text-success border-success/30" }, demo: { label: "DEMO", cls: "bg-blue-500/15 text-blue-400 border-blue-500/30" }, prop: { label: "PROP", cls: "bg-gold-500/15 text-gold-400 border-gold-500/30" } };
+            const badge = TBADGE[String(acc?.account_type ?? "live")] ?? TBADGE.live;
             return (
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="text-zinc-500 text-xs">Trade f&#252;r:</span>
