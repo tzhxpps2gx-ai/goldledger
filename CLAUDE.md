@@ -32,9 +32,10 @@ User hat KEINE Coding-Erfahrung — arbeitet mit Claude Code.
 - **Etappe 19:** Reviews-System — Wochen-/Monatsreviews mit geführten Fragen, Auto-Stats-Sidebar, Trade-Verlinkung via #ID
 - **Etappe 20:** Pre-Trading-Checklist (8 Default-Items inkl. News-Check) + Disziplin-Score (Dashboard-Widget + Korrelationsanalyse in Analytics)
 - **Etappe 21:** ForexFactory News-Integration — /news-Seite, NextNewsWidget, NewsWarningModal beim Trade-Anlegen, News-Status in Checklist, News-Preferences in Settings
+- **Etappe 22:** Multi-Account-Management — Live/Demo/Prop-Typ, Archivierung statt Löschen, AccountSwitcher mit Type-Badges und Archiv-Sektion, Settings-Tab "Konten" mit vollem CRUD
 
 ## Aktueller Stand
-Etappe 21 abgeschlossen. Nächste Etappe noch offen.
+Etappe 22 abgeschlossen. Nächste Etappe noch offen.
 
 ## Wichtige Architektur-Entscheidungen
 - **User-Preferences in profiles-Tabelle** — Spalten: `streak_mode`, `sound_enabled`, `active_account_id`, `celebrated_goal_ids`, `news_currencies`, `news_min_impact`, `news_warning_minutes` — nicht in localStorage
@@ -47,6 +48,9 @@ Etappe 21 abgeschlossen. Nächste Etappe noch offen.
 - **Importierte Trades zählen nicht zum Disziplin-Score** — faire Behandlung, da nachträglich keine Checklist möglich
 - **Symbol-Normalisierung beim MT5-Import** — XAU-Varianten → XAUUSD
 - **NewsWarningModal nur bei /trades/new** — nicht bei /trades/[id]/edit (kein unnötiger Friction bei Korrekturen)
+- **Konten werden archiviert (soft-delete), nicht hart gelöscht** — Trades bleiben einsehbar. Hartes Löschen nur bei 0 Trades möglich.
+- **Aktives Konto kann nicht archiviert werden** — Schutz davor, sich auszusperren. Letztes aktives Konto ebenfalls nicht archivierbar.
+- **account_type IN ('live','demo','prop')** — CHECK-Constraint in DB; Farben konsistent: LIVE=grün, DEMO=blau, PROP=gold
 - **macOS TCC/Sandbox blockiert alle Schreibzugriffe auf ~/Documents/goldledger** — Workaround: alle Dateiänderungen via `gh api repos/{REPO}/contents/{path} --method PUT --input tmpfile.json` mit base64-kodiertem Inhalt
 
 ## Database-Schema (Supabase, RLS überall aktiv)
@@ -57,6 +61,7 @@ Wichtige Spalten / Hinweise:
 - `profiles`: news_currencies text[] default '{"USD"}', news_min_impact text default 'medium', news_warning_minutes integer default 30
 - `checklist_items`: "label" muss gequotet werden (reserviertes Wort in PostgreSQL)
 - `trades`: checklist_used boolean default false
+- `accounts`: account_type text CHECK IN ('live','demo','prop'), is_archived boolean default false, archived_at timestamptz nullable; Index auf (user_id, is_archived)
 
 ## Wichtige Routinen für Claude Code
 Bei JEDER neuen Etappe, am Ende:
