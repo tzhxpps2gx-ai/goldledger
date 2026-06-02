@@ -16,7 +16,7 @@ export default async function DashboardPage() {
     supabase
       .from("accounts")
       .select("*")
-      .eq("is_active", true)
+      .eq("is_archived", false)
       .order("created_at", { ascending: true }),
     getUserPreferences(),
   ]);
@@ -39,7 +39,7 @@ export default async function DashboardPage() {
       supabase
         .from("goals")
         .select("*")
-        .eq("is_active", true)
+        .eq("is_archived", false)
         .order("created_at", { ascending: false }),
       supabase
         .from("trades")
@@ -52,10 +52,12 @@ export default async function DashboardPage() {
       trades={(trades ?? []) as Trade[]}
       account={{
         name: account.name,
+        account_type: account.account_type ?? "live",
         broker: account.broker,
         currency: account.currency,
         starting_balance: Number(account.starting_balance),
         current_balance: Number(account.current_balance),
+        is_archived: account.is_archived ?? false,
       }}
       goals={(goals ?? []) as Goal[]}
       goalTrades={(goalTrades ?? []) as TradeLike[]}
