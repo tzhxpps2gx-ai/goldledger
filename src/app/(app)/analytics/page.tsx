@@ -99,7 +99,7 @@ export default async function AnalyticsPage() {
         ? acc.rValues.reduce((s, r) => s + r, 0) / acc.rValues.length
         : null;
     tagStats.push({
-      tagId,
+      id: tagId,
       name: meta.name,
       category: meta.category,
       color: meta.color,
