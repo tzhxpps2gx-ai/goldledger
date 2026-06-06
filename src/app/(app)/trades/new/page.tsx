@@ -105,7 +105,7 @@ export default function NewTradePage() {
     setCheckedItems((prev) => ({ ...prev, [itemId]: value }));
   }
 
-  async function doSubmit() {
+  async function doSubmit(flaggedAgainstNews = false) {
     setLoading(true);
     setError(null);
 
@@ -172,6 +172,7 @@ export default function NewTradePage() {
         status: form.status,
         notes: form.notes || null,
         checklist_used: checklistUsed,
+        traded_against_news: flaggedAgainstNews,
       })
       .select()
       .single();
@@ -240,7 +241,7 @@ export default function NewTradePage() {
   async function handleModalConfirm() {
     setShowNewsModal(false);
     setPendingSubmit(false);
-    await doSubmit();
+    await doSubmit(true);
   }
 
   function handleModalCancel() {
