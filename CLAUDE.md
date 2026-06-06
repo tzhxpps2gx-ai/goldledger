@@ -131,9 +131,10 @@ Kompakt halten, kein Roman.
 - **Etappe 20:** Pre-Trading-Checklist (8 Default-Items inkl. News-Check) + Disziplin-Score (Dashboard-Widget + Korrelationsanalyse in Analytics)
 - **Etappe 21:** ForexFactory News-Integration — /news-Seite, NextNewsWidget, NewsWarningModal beim Trade-Anlegen, News-Status in Checklist, News-Preferences in Settings
 - **Etappe 22:** Multi-Account-Management — Live/Demo/Prop-Typ, Archivierung statt Löschen, AccountSwitcher mit Type-Badges und Archiv-Sektion, Settings-Tab "Konten" mit vollem CRUD
+- **Etappe 23:** Multi-Account-Vergleich in Analytics — neue Sektion "Konto-Vergleich" mit Win-Rate, Gesamt-P/L, Ø P/L pro Trade pro Konto; aktives Konto gold hervorgehoben; Bugfix: is_archived Filter in Analytics page
 
 ## Aktueller Stand
-Etappe 22 abgeschlossen. Nächste Etappe noch offen.
+Etappe 23 abgeschlossen. Nächste Etappe noch offen.
 
 ## Wichtige Architektur-Entscheidungen
 - **User-Preferences in profiles-Tabelle** — Spalten: `streak_mode`, `sound_enabled`, `active_account_id`, `celebrated_goal_ids`, `news_currencies`, `news_min_impact`, `news_warning_minutes` — nicht in localStorage
@@ -174,7 +175,7 @@ Bei JEDER neuen Etappe, am Ende:
 - **PDF-Export** der Reviews und Analytics
 - **Disziplin-Score in Reviews** — Wochenscore direkt im Review-Header anzeigen
 - **Trade-Templates** für schnelle Wiederholung typischer Setups
-- **Multi-Account-Vergleich** in Analytics
+- ~~**Multi-Account-Vergleich** in Analytics~~ — erledigt in Etappe 23
 - **Custom-Email-Absender** mit Resend (braucht eigene Domain)
 - **iOS-App** via Capacitor
 - **MT5 EA-Bridge** für Realtime-Trade-Sync
