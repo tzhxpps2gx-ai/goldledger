@@ -6,6 +6,7 @@ import HourlyHeatmap from "@/components/HourlyHeatmap";
 import SetupStatsTable from "@/components/SetupStatsTable";
 import DisciplineCorrelation from "@/components/DisciplineCorrelation";
 import ItemComplianceList from "@/components/ItemComplianceList";
+import AccountComparisonClient, { type ComparisonAccount } from "@/components/AccountComparisonClient";
 import type { TagStat } from "@/lib/tags";
 import { getUserPreferences } from "@/lib/getUserPreferences";
 import { calculateHourlyHeatmap, findBestWorstHour } from "@/lib/timeStats";
@@ -20,7 +21,7 @@ export default async function AnalyticsPage() {
   const supabase = createClient();
 
   const [{ data: accounts }, userPreferences] = await Promise.all([
-    supabase.from("accounts").select("*").eq("is_active", true),
+    supabase.from("accounts").select("*").eq("is_archived", false),
     getUserPreferences(),
   ]);
 
@@ -41,7 +42,7 @@ export default async function AnalyticsPage() {
   const closedTrades = trades ?? [];
   const tradeIds = closedTrades.map((t) => t.id as string);
 
-  // Tag-Stats (unveraendert)
+  // Tag-Stats
   const { data: allTags } = await supabase
     .from("tags")
     .select("id, name, category, color");
@@ -98,7 +99,7 @@ export default async function AnalyticsPage() {
         ? acc.rValues.reduce((s, r) => s + r, 0) / acc.rValues.length
         : null;
     tagStats.push({
-      id: tagId,
+      tagId,
       name: meta.name,
       category: meta.category,
       color: meta.color,
@@ -109,7 +110,7 @@ export default async function AnalyticsPage() {
     });
   }
 
-  // Neue Analytics: Heatmap-Insights + Setup
+  // Heatmap + Setup-Stats
   const typedTrades = closedTrades as Array<{
     id: string;
     symbol: string;
@@ -154,7 +155,6 @@ export default async function AnalyticsPage() {
     }
   }
 
-  // All-time compliance (keine Zeitraum-Einschränkung)
   const allStart = "2000-01-01";
   const allEnd   = "2099-12-31";
   const itemCompliance = calculatePerItemCompliance(
@@ -164,6 +164,34 @@ export default async function AnalyticsPage() {
     allStart,
     allEnd
   );
+
+  // Konto-Vergleich: Trade-Stats für alle nicht-archivierten Konten
+  const allAccountIds = accounts.map((a) => a.id as string);
+  const { data: compTrades } = allAccountIds.length > 0
+    ? await supabase
+        .from("trades")
+        .select("account_id, pnl_currency")
+        .in("account_id", allAccountIds)
+        .eq("status", "closed")
+    : { data: [] };
+
+  const comparisonAccounts: ComparisonAccount[] = accounts.map((acc) => {
+    const accTrades = (compTrades ?? []).filter((t) => t.account_id === acc.id);
+    const tradeCount = accTrades.length;
+    const totalPnl = accTrades.reduce((s, t) => s + ((t.pnl_currency as number) ?? 0), 0);
+    const wins = accTrades.filter((t) => ((t.pnl_currency as number) ?? 0) > 0).length;
+    return {
+      id: acc.id as string,
+      name: acc.name as string,
+      broker: acc.broker as string | null,
+      account_type: (acc.account_type as string) ?? "live",
+      currency: acc.currency as string,
+      tradeCount,
+      totalPnl,
+      winRate: tradeCount > 0 ? (wins / tradeCount) * 100 : 0,
+      avgPnl: tradeCount > 0 ? totalPnl / tradeCount : 0,
+    };
+  });
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
@@ -216,6 +244,22 @@ export default async function AnalyticsPage() {
           </h3>
           <ItemComplianceList items={itemCompliance} />
         </div>
+      </div>
+
+      {/* Konto-Vergleich */}
+      <div className="space-y-3">
+        <div>
+          <h2 className="text-xs font-semibold text-gold-400 uppercase tracking-wider mb-1">
+            Konto-Vergleich
+          </h2>
+          <p className="text-xs text-zinc-500">
+            Alle aktiven Konten im Überblick
+          </p>
+        </div>
+        <AccountComparisonClient
+          accounts={comparisonAccounts}
+          activeAccountId={account.id as string}
+        />
       </div>
     </div>
   );
