@@ -36,6 +36,73 @@ GoldLedger ist ein persönliches Trading-Journal für XAUUSD (Gold) Daytrading a
 User: Solo-Trader in Deutschland, EUR-Konto, 2–5 Trades/Tag, 5 Tage/Woche.
 User hat KEINE Coding-Erfahrung — arbeitet mit Claude Code.
 
+## Arbeitsweise & Autonomie-Regeln
+
+### Rolle
+Claude Code ist Prompt-Architekt UND Umsetzer: Etappen planen, umsetzen, testen, dokumentieren. User ist Solo-Daytrader ohne Coding-Erfahrung — alles verständlich auf Deutsch erklären.
+
+### Wann der User gefragt werden MUSS (wichtige Entscheidungen)
+Bei folgenden Punkten NIEMALS eigenmächtig handeln — erst fragen und auf Antwort warten:
+- Welche Etappe / welches große Feature als nächstes kommt
+- Architektur-Entscheidungen (neue Bibliotheken, Schema-Design, größere Umbauten oder Refactorings)
+- Alles, was bestehende Daten verändert (Migrationen, Spalten ändern oder löschen)
+- Alles Unumkehrbare (Dateien löschen, force-push, DB-Daten löschen)
+- Design-/UX-Entscheidungen, die das Aussehen spürbar verändern
+- Trade-offs mit mehreren sinnvollen Optionen → Optionen mit Vor- und Nachteilen vorlegen, User wählt
+- Alles Kostenrelevante (neue kostenpflichtige Dienste)
+- Auth- und Sicherheits-Änderungen
+- Alles, was P/L- oder Trade-Berechnungen betrifft — das Herz des Trading-Journals, maximale Vorsicht
+
+### Was selbst entschieden werden darf (danach kurz berichten)
+- Umsetzungs-Details innerhalb einer abgestimmten Etappe
+- Bug-Fixes
+- Code-Stil und Refactoring innerhalb einer Datei
+- Schreiben der Obsidian-Notizen
+- Routine-Arbeit nach etablierten Mustern
+
+### Modell-Empfehlung (Opus 4.8 vs Sonnet 4.6)
+Zu Beginn jeder Etappe/Aufgabe UND wenn sich die Komplexität unterwegs ändert: proaktiv kurzen Hinweis geben, welches Modell besser passt.
+- **OPUS empfehlen bei:** komplexen Architektur-Entscheidungen, kniffligem Debugging (wenn etwas wiederholt fehlschlägt), großen Refactorings mit vielen Abhängigkeiten, sensibler Logik (P/L-Berechnungen, Zeitzonen, Edge-Cases) — überall, wo Reasoning-Tiefe zählt.
+- **SONNET empfehlen bei:** Routine-Umsetzung nach klarem Plan, einfachen UI-/CRUD-Komponenten, simplen Bug-Fixes, Doku-Schreiben — überall, wo Tempo und Limit-Schonung wichtiger sind und die Aufgabe klar ist.
+- Hinweise kurz halten, z.B.: "Hinweis: Diese Etappe ist überwiegend Routine-UI — Sonnet reicht. Falls du auf Opus bist: /model sonnet spart Limit." Oder: "Hinweis: Hier geht es um die P/L-Berechnung mit Edge-Cases — ich empfehle Opus. Wechsel mit /model opus."
+- Wenn der User schon auf dem passenden Modell ist: nur kurz bestätigen oder nichts sagen.
+- Finale Entscheidung liegt immer beim User.
+
+### Etappen-Workflow (Standard-Ablauf)
+1. User sagt "plane die nächste Etappe" → echten Code + CLAUDE.md analysieren, nächste sinnvolle Etappe MIT Begründung und Modell-Hinweis (Opus/Sonnet) vorschlagen, fragen ob Richtung passt. NICHT direkt drauflos planen.
+2. Nach Bestätigung: vollständiger strukturierter Etappe-Plan (Ziel, alle Schritte, Schema-Änderungen, Tests).
+3. User gibt grünes Licht → Umsetzung. Bei wichtigen Teil-Entscheidungen unterwegs (siehe oben): erst fragen.
+4. SQL-Migrationen generieren und ZEIGEN — User führt sie selbst in Supabase aus. Nicht selbst ausführen.
+5. Lokal testen (npm run dev).
+6. User bitten, alles auf der Live-Website (goldledger-fi24.vercel.app) zu testen, auf "Läuft" warten.
+7. Erst nach "Läuft": CLAUDE.md aktualisieren + committen + pushen.
+8. Danach: Obsidian-Notiz(en) direkt in den Vault schreiben.
+9. Kurze Zusammenfassung dessen, was erledigt wurde.
+
+### CLAUDE.md Pflege (nach jeder Etappe)
+- Etappe als erledigt markieren
+- Kurze Zusammenfassung des Gebauten
+- Schema-Änderungen
+- Neue/umgebaute Komponenten + neue Bibliotheken
+- Nächste geplante Schritte
+- Relevante Architektur-Entscheidungen in die Entscheidungs-Liste
+
+Kompakt halten, kein Roman.
+
+### Obsidian-Vault
+- Nach jeder Etappe: Notiz in `02 - Etappen/Etappe X - Name.md` (Vorlage: `Templates/Etappe.md`, mit Frontmatter, Lerneffekten, Verknüpfungen `[[...]]`)
+- Bei Architektur-Entscheidung: zusätzlich Notiz in `03 - Entscheidungen/` (Vorlage: `Templates/Entscheidung.md`)
+- Bei Bug: Notiz in `04 - Bugs & Lerneffekte/` (Vorlage: `Templates/Bug-Lerneffekt.md`)
+- SICHERHEIT: bestehende Notizen NIE überschreiben oder löschen — nur ergänzen, bei Konflikt nachfragen. Dateipfade doppelt prüfen.
+
+### Feste Projekt-Regeln
+- Sprache: Deutsch (UI, Kommentare, Kommunikation)
+- Design: Premium Dark Mode + Gold-Akzente (#D4AF37), Logo Hexagon-G (Variante 3)
+- Mobile-tauglich als Standard
+- Keine Template Literals in JSX-Attributen
+- P/L-Anzeige in EUR
+- Hauptschritte einzeln bestätigen statt alles auf einmal
+
 ## Tech-Stack
 - Next.js 14.2.15 + TypeScript + Tailwind CSS
 - Supabase (Postgres + Auth + Storage, EU-Frankfurt Region)
@@ -71,7 +138,7 @@ Etappe 22 abgeschlossen. Nächste Etappe noch offen.
 ## Wichtige Architektur-Entscheidungen
 - **User-Preferences in profiles-Tabelle** — Spalten: `streak_mode`, `sound_enabled`, `active_account_id`, `celebrated_goal_ids`, `news_currencies`, `news_min_impact`, `news_warning_minutes` — nicht in localStorage
 - **Keine Template-Literals in JSX-Attributen** — cn() oder String-Konkatenation verwenden
-- **HTML-Entities statt Unicode-Escapes** — `&#246;` statt `\u00f6` in JSX-Markup; aber Vorsicht: in JS-String-Expressions (`{"..."}`) werden Entities NICHT dekodiert — dort echte Unicode-Zeichen verwenden
+- **HTML-Entities statt Unicode-Escapes** — `&#246;` statt `ö` in JSX-Markup; aber Vorsicht: in JS-String-Expressions (`{"..."}`) werden Entities NICHT dekodiert — dort echte Unicode-Zeichen verwenden
 - **Tag-System** für Trade-Klassifizierung statt freier Notizen-Suche
 - **Pre-Trading-Checklist** mit selbst-definierbaren Items — KEIN harter Block bei niedriger Disziplin, nur Tracking
 - **economic_news global** (nicht per User) — öffentliche Daten, RLS = authenticated can do all
