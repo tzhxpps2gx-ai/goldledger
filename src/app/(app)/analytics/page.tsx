@@ -7,6 +7,7 @@ import SetupStatsTable from "@/components/SetupStatsTable";
 import DisciplineCorrelation from "@/components/DisciplineCorrelation";
 import ItemComplianceList from "@/components/ItemComplianceList";
 import AccountComparisonClient, { type ComparisonAccount } from "@/components/AccountComparisonClient";
+import NewsTradeComparisonClient, { type NewsComparisonData } from "@/components/NewsTradeComparisonClient";
 import type { TagStat } from "@/lib/tags";
 import { getUserPreferences } from "@/lib/getUserPreferences";
 import { calculateHourlyHeatmap, findBestWorstHour } from "@/lib/timeStats";
@@ -35,7 +36,7 @@ export default async function AnalyticsPage() {
 
   const { data: trades } = await supabase
     .from("trades")
-    .select("id, symbol, direction, pnl_currency, r_multiple, entry_time, exit_time, setup, checklist_used, imported_at")
+    .select("id, symbol, direction, pnl_currency, r_multiple, entry_time, exit_time, setup, checklist_used, imported_at, traded_against_news")
     .eq("account_id", account.id)
     .eq("status", "closed");
 
@@ -165,7 +166,7 @@ export default async function AnalyticsPage() {
     allEnd
   );
 
-  // Konto-Vergleich: Trade-Stats für alle nicht-archivierten Konten
+  // Konto-Vergleich
   const allAccountIds = accounts.map((a) => a.id as string);
   const { data: compTrades } = allAccountIds.length > 0
     ? await supabase
@@ -192,6 +193,34 @@ export default async function AnalyticsPage() {
       avgPnl: tradeCount > 0 ? totalPnl / tradeCount : 0,
     };
   });
+
+  // News-Trade-Vergleich
+  const flaggedTrades = closedTrades.filter((t) => (t as any).traded_against_news === true);
+  const normalTrades  = closedTrades.filter((t) => !(t as any).traded_against_news);
+
+  function calcStats(arr: typeof closedTrades) {
+    const count = arr.length;
+    const totalPnl = arr.reduce((s, t) => s + ((t.pnl_currency as number) ?? 0), 0);
+    const wins = arr.filter((t) => ((t.pnl_currency as number) ?? 0) > 0).length;
+    return {
+      count,
+      winRate: count > 0 ? (wins / count) * 100 : 0,
+      avgPnl:  count > 0 ? totalPnl / count : 0,
+    };
+  }
+
+  const flaggedStats = calcStats(flaggedTrades);
+  const normalStats  = calcStats(normalTrades);
+
+  const newsComparisonData: NewsComparisonData = {
+    flaggedCount:   flaggedStats.count,
+    flaggedWinRate: flaggedStats.winRate,
+    flaggedAvgPnl:  flaggedStats.avgPnl,
+    normalCount:    normalStats.count,
+    normalWinRate:  normalStats.winRate,
+    normalAvgPnl:   normalStats.avgPnl,
+    currency: account.currency as string,
+  };
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
@@ -244,6 +273,19 @@ export default async function AnalyticsPage() {
           </h3>
           <ItemComplianceList items={itemCompliance} />
         </div>
+      </div>
+
+      {/* News-Trade-Vergleich */}
+      <div className="space-y-3">
+        <div>
+          <h2 className="text-xs font-semibold text-gold-400 uppercase tracking-wider mb-1">
+            Trades trotz News-Warnung
+          </h2>
+          <p className="text-xs text-zinc-500">
+            Performen Trades, die du trotz Warnung angelegt hast, anders?
+          </p>
+        </div>
+        <NewsTradeComparisonClient data={newsComparisonData} />
       </div>
 
       {/* Konto-Vergleich */}
