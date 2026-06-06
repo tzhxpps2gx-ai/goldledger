@@ -1,5 +1,31 @@
 # GoldLedger — Personal Trading Journal
 
+## Obsidian Second Brain
+
+Vault-Pfad (iCloud): `~/Library/Mobile Documents/com~apple~CloudDocs/B-Business/GoldLedger-Brain/`
+
+Lese- und Schreibrechte vorhanden. Nutzen für Etappe-Zusammenfassungen, Entscheidungen, Bugs und Lerneffekte.
+
+**Ordnerstruktur:**
+- `00 - Dashboard/` — Startseite-Notiz
+- `01 - Projekt-Status/` — Roadmap, Vision
+- `02 - Etappen/` — Eine Notiz pro Etappe (Format: `Etappe X - Name.md`)
+- `03 - Entscheidungen/` — Architektur-Entscheidungen
+- `04 - Bugs & Lerneffekte/` — Bug-Reports + was ich daraus gelernt habe
+- `05 - Feature-Ideen/` — Inbox für spontane Ideen
+- `06 - Trading-Insights/` — Trading-Erkenntnisse aus Journal-Nutzung
+- `07 - Setup-Doku/` — Vercel, Supabase, etc.
+- `08 - Anhänge/` — Screenshots, Diagramme
+- `Templates/` — Vorlagen (Etappe.md, Entscheidung.md, Bug-Lerneffekt.md, Feature-Idee.md)
+
+**Regeln:**
+- Neue Notizen IMMER mit YAML-Frontmatter (typ, datum, tags)
+- Bei Etappe-Notizen: Template aus `Templates/Etappe.md` als Vorlage nehmen
+- Bei Verlinkungen: `[[Notiz-Name]]`-Syntax verwenden
+- KEINE existierenden Notizen überschreiben — bei Konflikt mit dem User abklären
+- Dateinamen: keine Sonderzeichen, deutsche Umlaute OK
+
+
 ## Projekt-Kontext
 GoldLedger ist ein persönliches Trading-Journal für XAUUSD (Gold) Daytrading auf Vantage.
 User: Solo-Trader in Deutschland, EUR-Konto, 2–5 Trades/Tag, 5 Tage/Woche.
