@@ -22,8 +22,13 @@ Lese- und Schreibrechte vorhanden. Nutzen für Etappe-Zusammenfassungen, Entsche
 - Neue Notizen IMMER mit YAML-Frontmatter (typ, datum, tags)
 - Bei Etappe-Notizen: Template aus `Templates/Etappe.md` als Vorlage nehmen
 - Bei Verlinkungen: `[[Notiz-Name]]`-Syntax verwenden
-- KEINE existierenden Notizen überschreiben — bei Konflikt mit dem User abklären
 - Dateinamen: keine Sonderzeichen, deutsche Umlaute OK
+
+**WICHTIG — Datei-Sicherheit:**
+- NIEMALS Notizen löschen ohne explizite Bestätigung des Users
+- BESTEHENDE Notizen nur ergänzen (append), NICHT überschreiben
+- Bei Konflikten oder Unklarheit: erst nachfragen, nicht handeln
+- Dateipfade IMMER doppelt prüfen vor dem Schreiben
 
 
 ## Projekt-Kontext
