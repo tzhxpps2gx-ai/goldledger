@@ -72,16 +72,13 @@ export default async function ReviewDetailPage({ params }: { params: { id: strin
   let disciplineScore: number | null = null;
   let disciplineTradeCount = 0;
   if (eligibleIds.length > 0) {
-    const [{ count: itemsCount }, { count: checkedCount }] = await Promise.all([
-      supabase.from("checklist_items").select("*", { count: "exact", head: true }),
-      supabase.from("trade_checklist_completions")
-        .select("*", { count: "exact", head: true })
-        .in("trade_id", eligibleIds)
-        .eq("is_checked", true),
-    ]);
-    const total = (itemsCount ?? 0) * eligibleIds.length;
-    if (total > 0) {
-      disciplineScore = Math.round(((checkedCount ?? 0) / total) * 100);
+    const { data: completions } = await supabase
+      .from("trade_checklist_completions")
+      .select("is_checked")
+      .in("trade_id", eligibleIds);
+    if (completions && completions.length > 0) {
+      const checkedCount = completions.filter((c) => c.is_checked).length;
+      disciplineScore = Math.round((checkedCount / completions.length) * 100);
       disciplineTradeCount = eligibleIds.length;
     }
   }
@@ -219,4 +216,5 @@ export default async function ReviewDetailPage({ params }: { params: { id: strin
     </div>
   );
 }
+
 
