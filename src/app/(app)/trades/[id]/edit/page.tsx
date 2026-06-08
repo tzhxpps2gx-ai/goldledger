@@ -16,6 +16,7 @@ import type { Tag } from "@/lib/tags";
 import type { ChecklistItem } from "@/lib/checklist";
 import { saveTradeTagsAction } from "@/app/actions/trade-tags";
 import { getChecklistItemsAction, saveTradeChecklistAction } from "@/app/actions/checklist";
+import { BookTemplate, ChevronDown, ChevronUp } from "lucide-react";
 
 export default function EditTradePage() {
   const router = useRouter();
@@ -32,6 +33,11 @@ export default function EditTradePage() {
   const [loading, setLoading] = useState(false);
   const [loadingTrade, setLoadingTrade] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [templateSaved, setTemplateSaved] = useState(false);
 
   const [form, setForm] = useState({
     account_id: "",
@@ -52,9 +58,8 @@ export default function EditTradePage() {
 
   useEffect(() => {
     async function load() {
-      // Konten, Trade und verfügbare Tags parallel laden
       const [{ data: accs }, { data: trade }, { data: tagsData }, { data: clItems }] = await Promise.all([
-        supabase.from("accounts").select("*").eq("is_active", true),
+        supabase.from("accounts").select("*").eq("is_archived", false),
         supabase.from("trades").select("*").eq("id", tradeId).single(),
         supabase.from("tags").select("id, name, category, color").order("category").order("name"),
         getChecklistItemsAction(),
@@ -86,7 +91,6 @@ export default function EditTradePage() {
           status: (trade.status as any) ?? "closed",
         });
 
-        // Bereits zugewiesene Tags + Checklist-Completions laden
         const [{ data: existingLinks }, { data: existingComps }] = await Promise.all([
           supabase.from("trade_tags").select("tag_id").eq("trade_id", tradeId),
           supabase.from("trade_checklist_completions").select("item_id, is_checked").eq("trade_id", tradeId),
@@ -105,6 +109,28 @@ export default function EditTradePage() {
 
   function update<K extends keyof typeof form>(key: K, value: typeof form[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  async function saveAsTemplate() {
+    if (!templateName.trim()) return;
+    setSavingTemplate(true);
+    const { error: tmplError } = await supabase.from("trade_templates").insert({
+      name: templateName.trim(),
+      direction: form.direction,
+      setup: form.setup || null,
+      reasoning: form.reasoning || null,
+      planned_entry: parseFloat(form.planned_entry) || null,
+      planned_stop: parseFloat(form.planned_stop) || null,
+      planned_target: parseFloat(form.planned_target) || null,
+      lot_size: parseFloat(form.lot_size) || 0.01,
+    });
+    setSavingTemplate(false);
+    if (!tmplError) {
+      setTemplateSaved(true);
+      setTemplateName("");
+      setShowSaveTemplate(false);
+      setTimeout(() => setTemplateSaved(false), 3000);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -130,7 +156,6 @@ export default function EditTradePage() {
     let exchangeRate = Number(originalTrade?.exchange_rate ?? 1.0);
 
     if (form.status === "closed" && actualEntry && actualExit) {
-      // Wenn Entry/Exit geändert → Kurs neu holen
       const entryChanged = actualEntry !== Number(originalTrade?.actual_entry ?? 0);
       const exitChanged = actualExit !== Number(originalTrade?.actual_exit ?? 0);
       if (entryChanged || exitChanged || !exchangeRate) {
@@ -182,7 +207,6 @@ export default function EditTradePage() {
       return;
     }
 
-    // Konto-Saldo um die Differenz korrigieren
     if (pnlDiff !== 0) {
       const account = accounts.find((a) => a.id === form.account_id);
       if (account) {
@@ -195,7 +219,6 @@ export default function EditTradePage() {
       }
     }
 
-    // Tags + Checklist speichern
     const { error: tagError } = await saveTradeTagsAction(tradeId, selectedTagIds);
     if (tagError) {
       setError("Tags konnten nicht gespeichert werden: " + tagError);
@@ -209,7 +232,6 @@ export default function EditTradePage() {
         is_checked: checkedItems[item.id] ?? false,
       }));
       await saveTradeChecklistAction(tradeId, completions);
-      // checklist_used = true wenn noch nicht gesetzt
       if (!originalTrade?.checklist_used) {
         await supabase.from("trades").update({ checklist_used: true }).eq("id", tradeId);
       }
@@ -347,6 +369,55 @@ export default function EditTradePage() {
             />
           </div>
         )}
+
+        {/* Als Template speichern */}
+        <div className="bg-bg-card border border-bg-border rounded-2xl overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowSaveTemplate((v) => !v)}
+            className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-bg-elevated/50 transition"
+          >
+            <div className="flex items-center gap-2">
+              <BookTemplate size={15} className="text-gold-400" />
+              <span className="text-sm font-medium text-zinc-300">Als Template speichern</span>
+              {templateSaved && (
+                <span className="text-xs text-success bg-success/10 border border-success/20 rounded px-1.5 py-0.5">
+                  Gespeichert!
+                </span>
+              )}
+            </div>
+            {showSaveTemplate ? (
+              <ChevronUp size={15} className="text-zinc-500" />
+            ) : (
+              <ChevronDown size={15} className="text-zinc-500" />
+            )}
+          </button>
+          {showSaveTemplate && (
+            <div className="px-5 pb-4 space-y-3 border-t border-bg-border">
+              <p className="text-xs text-zinc-500 pt-3">
+                Speichert Richtung, Setup, Begründung, Levels und Lot-Size als wiederverwendbares Template.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  placeholder="Template-Name, z.B. Breakout Long"
+                  className={inputCls + " flex-1"}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveAsTemplate(); } }}
+                />
+                <button
+                  type="button"
+                  onClick={saveAsTemplate}
+                  disabled={savingTemplate || !templateName.trim()}
+                  className="px-4 py-2 bg-gold-500/20 border border-gold-500/30 text-gold-400 text-sm font-medium rounded-lg hover:bg-gold-500/30 transition disabled:opacity-40 shrink-0"
+                >
+                  {savingTemplate ? "..." : "Speichern"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
 
         {error && (
           <div className="text-sm text-danger bg-danger/10 border border-danger/30 rounded-lg px-3 py-2">{error}</div>
