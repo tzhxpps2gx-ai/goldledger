@@ -53,13 +53,14 @@ export async function GET(
   const template = TEMPLATES[r.period_type] ?? TEMPLATES.weekly;
   const periodLabel = getPeriodLabel(r.period_type, r.period_end);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const buffer = await renderToBuffer(
-    React.createElement(ReviewPDFDocument, { review: r, stats, template, currency, periodLabel })
+    React.createElement(ReviewPDFDocument, { review: r, stats, template, currency, periodLabel }) as any
   );
 
   const safeName = 'GoldLedger-' + periodLabel.replace(/\s*·\s*/g, '-').replace(/\s+/g, '-') + '.pdf';
 
-  return new Response(buffer, {
+  return new Response(new Uint8Array(buffer), {
     headers: {
       'Content-Type': 'application/pdf',
       'Content-Disposition': 'attachment; filename="' + safeName + '"',
