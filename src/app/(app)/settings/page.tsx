@@ -6,6 +6,7 @@ import TagManager from "@/components/TagManager";
 import ChecklistManager from "@/components/ChecklistManager";
 import NewsPreferences from "@/components/NewsPreferences";
 import AccountManager from "@/components/AccountManager";
+import TemplateManager from "@/components/TemplateManager";
 import { createClient } from "@/lib/supabase/client";
 import {
   type UserPreferences,
@@ -15,13 +16,14 @@ import {
 } from "@/lib/userPreferences";
 import { Volume2, VolumeX, Flame, Calendar } from "lucide-react";
 
-type Tab = "konten" | "checklist" | "news" | "tags" | "profil" | "belohnungen";
+type Tab = "konten" | "checklist" | "news" | "tags" | "templates" | "profil" | "belohnungen";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "konten",      label: "Konten" },
   { id: "checklist",   label: "Checklist" },
   { id: "news",        label: "News" },
   { id: "tags",        label: "Tags" },
+  { id: "templates",   label: "Templates" },
   { id: "profil",      label: "Profil" },
   { id: "belohnungen", label: "Belohnungen" },
 ];
@@ -120,6 +122,18 @@ export default function SettingsPage() {
       )}
 
       {activeTab === "tags" && <TagManager />}
+
+      {activeTab === "templates" && (
+        <div className="bg-bg-card border border-bg-border rounded-2xl p-5">
+          <div className="mb-5">
+            <h3 className="text-sm font-semibold text-white">Trade-Templates</h3>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              Templates können beim Anlegen eines neuen Trades geladen werden.
+            </p>
+          </div>
+          <TemplateManager />
+        </div>
+      )}
 
       {activeTab === "profil" && (
         <div className="bg-bg-card border border-bg-border rounded-2xl p-8 text-center">
