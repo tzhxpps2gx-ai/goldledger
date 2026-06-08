@@ -22,7 +22,6 @@ export type ReviewTrade = {
   entry_time: string | null;
   exit_time: string | null;
   status: string;
-  checklist_used?: boolean;
 };
 
 export type ReviewStats = {
@@ -236,4 +235,5 @@ export function renderTextWithTradeLinks(
   }
   return parts;
 }
+
 
