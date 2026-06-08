@@ -134,9 +134,10 @@ Kompakt halten, kein Roman.
 - **Etappe 23:** Multi-Account-Vergleich in Analytics — neue Sektion "Konto-Vergleich" mit Win-Rate, Gesamt-P/L, Ø P/L pro Trade pro Konto; aktives Konto gold hervorgehoben; Bugfix: is_archived Filter in Analytics page
 - **Etappe 24:** Anti-News-Trade-Flag — `traded_against_news` Spalte in trades; Flag wird bei "Trotzdem anlegen" im NewsWarningModal gesetzt; neue Analytics-Sektion "Trades trotz News-Warnung" mit Vergleich Win-Rate + Ø P/L
 - **Etappe 25:** Trade-Templates — `trade_templates` Tabelle (RLS); Templates aus Edit-Page speichern ("Als Template speichern"-Sektion); Template-Picker beim neuen Trade; Template-Verwaltung in Settings-Tab "Templates"
+- **Etappe 26:** Disziplin-Score in Reviews — Wochenscore in Review-Sidebar (Editor + abgeschlossene Reviews); `checklist_used` zur ReviewTrade-Abfrage; Farb-Kodierung grün/gold/rot; Bugfix `is_archived` in Reviews-Pages
 
 ## Aktueller Stand
-Etappe 25 abgeschlossen. Nächste Etappe noch offen.
+Etappe 26 abgeschlossen. Nächste Etappe noch offen.
 
 ## Wichtige Architektur-Entscheidungen
 - **User-Preferences in profiles-Tabelle** — Spalten: `streak_mode`, `sound_enabled`, `active_account_id`, `celebrated_goal_ids`, `news_currencies`, `news_min_impact`, `news_warning_minutes` — nicht in localStorage
@@ -176,7 +177,7 @@ Bei JEDER neuen Etappe, am Ende:
 ## Backlog / Spätere Ideen
 - ~~**Anti-News-Trade-Flag**~~ — erledigt in Etappe 24
 - **PDF-Export** der Reviews und Analytics
-- **Disziplin-Score in Reviews** — Wochenscore direkt im Review-Header anzeigen
+- ~~**Disziplin-Score in Reviews**~~ — erledigt in Etappe 26
 - ~~**Trade-Templates**~~ — erledigt in Etappe 25
 - ~~**Multi-Account-Vergleich** in Analytics~~ — erledigt in Etappe 23
 - **Custom-Email-Absender** mit Resend (braucht eigene Domain)
@@ -190,4 +191,5 @@ Bei JEDER neuen Etappe, am Ende:
 - **Mobile-tauglich** — alle Seiten responsive
 - **Strukturierte etappen-basierte Lieferung** bei größeren Features
 - **Klare Schritt-für-Schritt-Anweisungen** bei SQL-Migrationen und Deployments
+
 
