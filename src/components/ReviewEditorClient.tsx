@@ -26,8 +26,6 @@ type Props = {
   stats: ReviewStats;
   trades: ReviewTrade[];
   currency: string;
-  disciplineScore?: number | null;
-  disciplineTradeCount?: number;
 };
 
 function formatDate(s: string): string {
@@ -97,7 +95,6 @@ export default function ReviewEditorClient({
   review,
   periodType, periodStart, periodEnd,
   template, stats, trades, currency,
-  disciplineScore, disciplineTradeCount,
 }: Props) {
   const router = useRouter();
 
@@ -201,27 +198,6 @@ export default function ReviewEditorClient({
           <p className="text-xs text-zinc-600 mt-1">Keine Trades im Zeitraum.</p>
         )}
       </StatCard>
-      {disciplineScore != null && (
-        <StatCard label="Disziplin">
-          <div className={cn(
-            "text-xl font-bold",
-            disciplineScore >= 80 ? "text-success" : disciplineScore >= 50 ? "text-gold-400" : "text-danger"
-          )}>
-            {disciplineScore} %
-          </div>
-          <div className="mt-2 h-1 bg-bg-card rounded-full overflow-hidden">
-            <div className={cn(
-              "h-full rounded-full",
-              disciplineScore >= 80 ? "bg-success/60" : disciplineScore >= 50 ? "bg-gold-400/60" : "bg-danger/60"
-            )} style={{ width: disciplineScore + "%" }} />
-          </div>
-          {disciplineTradeCount != null && disciplineTradeCount > 0 && (
-            <p className="text-[10px] text-zinc-600 mt-1.5">
-              {"Basierend auf " + disciplineTradeCount + (disciplineTradeCount === 1 ? " Trade" : " Trades") + " mit Checklist"}
-            </p>
-          )}
-        </StatCard>
-      )}
       {stats.bestTrade && (
         <TradeCard label="Bester Trade" trade={stats.bestTrade}
           currency={currency} onCopyId={handleCopyId} />
@@ -404,4 +380,5 @@ export default function ReviewEditorClient({
     </div>
   );
 }
+
 
