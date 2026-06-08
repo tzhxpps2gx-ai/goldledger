@@ -38,6 +38,7 @@ export default function EditTradePage() {
   const [templateName, setTemplateName] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [templateSaved, setTemplateSaved] = useState(false);
+  const [templateError, setTemplateError] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     account_id: "",
@@ -114,7 +115,15 @@ export default function EditTradePage() {
   async function saveAsTemplate() {
     if (!templateName.trim()) return;
     setSavingTemplate(true);
+    setTemplateError(null);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setTemplateError("Nicht eingeloggt.");
+      setSavingTemplate(false);
+      return;
+    }
     const { error: tmplError } = await supabase.from("trade_templates").insert({
+      user_id: user.id,
       name: templateName.trim(),
       direction: form.direction,
       setup: form.setup || null,
@@ -125,7 +134,9 @@ export default function EditTradePage() {
       lot_size: parseFloat(form.lot_size) || 0.01,
     });
     setSavingTemplate(false);
-    if (!tmplError) {
+    if (tmplError) {
+      setTemplateError(tmplError.message);
+    } else {
       setTemplateSaved(true);
       setTemplateName("");
       setShowSaveTemplate(false);
@@ -415,6 +426,9 @@ export default function EditTradePage() {
                   {savingTemplate ? "..." : "Speichern"}
                 </button>
               </div>
+              {templateError && (
+                <p className="text-xs text-danger">{templateError}</p>
+              )}
             </div>
           )}
         </div>
