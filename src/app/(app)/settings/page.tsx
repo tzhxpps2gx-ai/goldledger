@@ -14,23 +14,35 @@ import {
   DEFAULT_PREFERENCES,
   updateUserPreference,
 } from "@/lib/userPreferences";
-import { Volume2, VolumeX, Flame, Calendar } from "lucide-react";
+import {
+  Building2,
+  ListChecks,
+  Newspaper,
+  Tag,
+  BookTemplate,
+  Gift,
+  ChevronRight,
+  ArrowLeft,
+  Volume2,
+  VolumeX,
+  Flame,
+  Calendar,
+} from "lucide-react";
 
-type Tab = "konten" | "checklist" | "news" | "tags" | "templates" | "profil" | "belohnungen";
+type Section = "konten" | "checklist" | "news" | "tags" | "templates" | "belohnungen";
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: "konten",      label: "Konten" },
-  { id: "checklist",   label: "Checklist" },
-  { id: "news",        label: "News" },
-  { id: "tags",        label: "Tags" },
-  { id: "templates",   label: "Templates" },
-  { id: "profil",      label: "Profil" },
-  { id: "belohnungen", label: "Belohnungen" },
+const SECTIONS: { id: Section; label: string; description: string; icon: React.ElementType }[] = [
+  { id: "konten",      label: "Konten",          description: "Trading-Konten verwalten",          icon: Building2 },
+  { id: "checklist",   label: "Checklist",        description: "Pre-Trading Checkliste anpassen",   icon: ListChecks },
+  { id: "news",        label: "News & Warnungen", description: "ForexFactory-Warnungen konfigurieren", icon: Newspaper },
+  { id: "tags",        label: "Tags",             description: "Trade-Tags erstellen und verwalten", icon: Tag },
+  { id: "templates",   label: "Templates",        description: "Gespeicherte Trade-Vorlagen",       icon: BookTemplate },
+  { id: "belohnungen", label: "Belohnungen",      description: "Sound, Streak-Modus",               icon: Gift },
 ];
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<Tab>("konten");
-  const [prefs, setPrefs]         = useState<UserPreferences>(DEFAULT_PREFERENCES);
+  const [active, setActive] = useState<Section | null>(null);
+  const [prefs, setPrefs]   = useState<UserPreferences>(DEFAULT_PREFERENCES);
   const [prefsLoaded, setPrefsLoaded] = useState(false);
 
   useEffect(() => {
@@ -68,82 +80,93 @@ export default function SettingsPage() {
     await updateUserPreference("streak_mode", mode);
   }
 
+  const currentSection = SECTIONS.find((s) => s.id === active);
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
-          Einstellungen
-        </h1>
-        <p className="text-zinc-400 text-sm mt-1">
-          Verwalte deine Konten, Checklist, Tags und Profil.
-        </p>
-      </div>
-
-      <div className="flex gap-1 bg-bg-card border border-bg-border rounded-xl p-1 overflow-x-auto scrollbar-hidden">
-        {TABS.map((tab) => (
+    <div className="max-w-xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-6">
+        {active && (
           <button
-            key={tab.id}
             type="button"
-            onClick={() => setActiveTab(tab.id)}
-            className={cn(
-              "flex-1 min-w-[64px] py-2 px-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
-              activeTab === tab.id
-                ? "bg-bg-elevated text-white shadow-sm"
-                : "text-zinc-500 hover:text-zinc-300"
-            )}
+            onClick={() => setActive(null)}
+            className="p-2 -ml-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
           >
-            {tab.label}
+            <ArrowLeft className="w-5 h-5" />
           </button>
-        ))}
+        )}
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
+            {active ? currentSection?.label : "Einstellungen"}
+          </h1>
+          {!active && (
+            <p className="text-zinc-400 text-sm mt-0.5">
+              Konten, Checklist, Tags und mehr
+            </p>
+          )}
+        </div>
       </div>
 
-      {activeTab === "konten" && (
+      {/* List view */}
+      {!active && (
+        <div className="bg-bg-card border border-bg-border rounded-2xl overflow-hidden divide-y divide-bg-border">
+          {SECTIONS.map((s) => {
+            const Icon = s.icon;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setActive(s.id)}
+                className="w-full flex items-center gap-4 px-5 py-4 hover:bg-bg-elevated/60 transition text-left"
+              >
+                <div className="w-9 h-9 rounded-xl bg-gold-500/10 border border-gold-500/20 flex items-center justify-center shrink-0">
+                  <Icon className="w-4 h-4 text-gold-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-white">{s.label}</div>
+                  <div className="text-xs text-zinc-500 mt-0.5">{s.description}</div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-zinc-600 shrink-0" />
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Section content */}
+      {active === "konten" && (
         <div className="bg-bg-card border border-bg-border rounded-2xl p-5">
           <AccountManager />
         </div>
       )}
 
-      {activeTab === "checklist" && (
+      {active === "checklist" && (
         <div className="bg-bg-card border border-bg-border rounded-2xl p-5">
           <ChecklistManager />
         </div>
       )}
 
-      {activeTab === "news" && (
+      {active === "news" && (
         <div className="bg-bg-card border border-bg-border rounded-2xl p-5">
-          <div className="mb-5">
-            <h3 className="text-sm font-semibold text-white">News &amp; Markt-Events</h3>
-            <p className="text-xs text-zinc-500 mt-0.5">
-              Konfiguriere deine News-Warnungen beim Trade-Anlegen.
-            </p>
-          </div>
+          <p className="text-xs text-zinc-500 mb-5">
+            Konfiguriere deine News-Warnungen beim Trade-Anlegen.
+          </p>
           <NewsPreferences />
         </div>
       )}
 
-      {activeTab === "tags" && <TagManager />}
+      {active === "tags" && <TagManager />}
 
-      {activeTab === "templates" && (
+      {active === "templates" && (
         <div className="bg-bg-card border border-bg-border rounded-2xl p-5">
-          <div className="mb-5">
-            <h3 className="text-sm font-semibold text-white">Trade-Templates</h3>
-            <p className="text-xs text-zinc-500 mt-0.5">
-              Templates können beim Anlegen eines neuen Trades geladen werden.
-            </p>
-          </div>
+          <p className="text-xs text-zinc-500 mb-5">
+            Templates k&#246;nnen beim Anlegen eines neuen Trades geladen werden.
+          </p>
           <TemplateManager />
         </div>
       )}
 
-      {activeTab === "profil" && (
-        <div className="bg-bg-card border border-bg-border rounded-2xl p-8 text-center">
-          <div className="text-3xl mb-3">&#128100;</div>
-          <h2 className="text-base font-semibold text-white mb-2">Profil-Einstellungen</h2>
-          <p className="text-zinc-500 text-sm">Kommt bald.</p>
-        </div>
-      )}
-
-      {activeTab === "belohnungen" && (
+      {active === "belohnungen" && (
         <div className="space-y-4">
           <div className="bg-bg-card border border-bg-border rounded-2xl p-5">
             <div className="flex items-center justify-between">
