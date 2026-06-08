@@ -15,7 +15,7 @@ import ReviewDeleteButton from "@/components/ReviewDeleteButton";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Download } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -122,6 +122,13 @@ export default async function ReviewDetailPage({ params }: { params: { id: strin
           <p className="text-zinc-500 text-sm">{formatDate(r.period_start)} &#8211; {formatDate(r.period_end)}</p>
         </div>
         <div className="flex flex-col items-end gap-2 flex-shrink-0">
+          <a
+            href={"/api/reviews/" + r.id + "/pdf"}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 rounded-xl text-xs font-medium transition"
+          >
+            <Download className="w-3.5 h-3.5" />
+            PDF
+          </a>
           <ReviewReopenButton reviewId={r.id} />
           <ReviewDeleteButton reviewId={r.id} />
         </div>
@@ -187,6 +194,7 @@ export default async function ReviewDetailPage({ params }: { params: { id: strin
     </div>
   );
 }
+
 
 
 
