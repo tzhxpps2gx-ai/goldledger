@@ -133,9 +133,10 @@ Kompakt halten, kein Roman.
 - **Etappe 22:** Multi-Account-Management — Live/Demo/Prop-Typ, Archivierung statt Löschen, AccountSwitcher mit Type-Badges und Archiv-Sektion, Settings-Tab "Konten" mit vollem CRUD
 - **Etappe 23:** Multi-Account-Vergleich in Analytics — neue Sektion "Konto-Vergleich" mit Win-Rate, Gesamt-P/L, Ø P/L pro Trade pro Konto; aktives Konto gold hervorgehoben; Bugfix: is_archived Filter in Analytics page
 - **Etappe 24:** Anti-News-Trade-Flag — `traded_against_news` Spalte in trades; Flag wird bei "Trotzdem anlegen" im NewsWarningModal gesetzt; neue Analytics-Sektion "Trades trotz News-Warnung" mit Vergleich Win-Rate + Ø P/L
+- **Etappe 25:** Trade-Templates — `trade_templates` Tabelle (RLS); Templates aus Edit-Page speichern ("Als Template speichern"-Sektion); Template-Picker beim neuen Trade; Template-Verwaltung in Settings-Tab "Templates"
 
 ## Aktueller Stand
-Etappe 24 abgeschlossen. Nächste Etappe noch offen.
+Etappe 25 abgeschlossen. Nächste Etappe noch offen.
 
 ## Wichtige Architektur-Entscheidungen
 - **User-Preferences in profiles-Tabelle** — Spalten: `streak_mode`, `sound_enabled`, `active_account_id`, `celebrated_goal_ids`, `news_currencies`, `news_min_impact`, `news_warning_minutes` — nicht in localStorage
@@ -154,7 +155,7 @@ Etappe 24 abgeschlossen. Nächste Etappe noch offen.
 - **macOS TCC/Sandbox blockiert alle Schreibzugriffe auf ~/Documents/goldledger** — Workaround: alle Dateiänderungen via `gh api repos/{REPO}/contents/{path} --method PUT --input tmpfile.json` mit base64-kodiertem Inhalt
 
 ## Database-Schema (Supabase, RLS überall aktiv)
-12 Tabellen: `profiles`, `accounts`, `trades`, `tags`, `trade_tags`, `screenshots`, `goals`, `reviews`, `checklist_items`, `trade_checklist_completions`, `economic_news`
+13 Tabellen: `profiles`, `accounts`, `trades`, `tags`, `trade_tags`, `screenshots`, `goals`, `reviews`, `checklist_items`, `trade_checklist_completions`, `economic_news`, `trade_templates`
 
 Wichtige Spalten / Hinweise:
 - `economic_news`: id, external_id, event_datetime, currency, impact (low/medium/high), event_name, forecast, previous, actual, fetched_at; UNIQUE(event_datetime, currency, event_name)
@@ -162,6 +163,7 @@ Wichtige Spalten / Hinweise:
 - `checklist_items`: "label" muss gequotet werden (reserviertes Wort in PostgreSQL)
 - `trades`: checklist_used boolean default false
 - `accounts`: account_type text CHECK IN ('live','demo','prop'), is_archived boolean default false, archived_at timestamptz nullable; Index auf (user_id, is_archived)
+- `trade_templates`: id, user_id, name text, direction text, setup text nullable, reasoning text nullable, planned_entry numeric nullable, planned_stop numeric nullable, planned_target numeric nullable, lot_size numeric default 0.01, created_at; RLS aktiv
 
 ## Wichtige Routinen für Claude Code
 Bei JEDER neuen Etappe, am Ende:
@@ -175,7 +177,7 @@ Bei JEDER neuen Etappe, am Ende:
 - ~~**Anti-News-Trade-Flag**~~ — erledigt in Etappe 24
 - **PDF-Export** der Reviews und Analytics
 - **Disziplin-Score in Reviews** — Wochenscore direkt im Review-Header anzeigen
-- **Trade-Templates** für schnelle Wiederholung typischer Setups
+- ~~**Trade-Templates**~~ — erledigt in Etappe 25
 - ~~**Multi-Account-Vergleich** in Analytics~~ — erledigt in Etappe 23
 - **Custom-Email-Absender** mit Resend (braucht eigene Domain)
 - **iOS-App** via Capacitor
@@ -188,3 +190,4 @@ Bei JEDER neuen Etappe, am Ende:
 - **Mobile-tauglich** — alle Seiten responsive
 - **Strukturierte etappen-basierte Lieferung** bei größeren Features
 - **Klare Schritt-für-Schritt-Anweisungen** bei SQL-Migrationen und Deployments
+
