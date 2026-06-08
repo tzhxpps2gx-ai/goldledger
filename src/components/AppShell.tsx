@@ -16,6 +16,7 @@ import {
   Newspaper,
   Menu,
   X,
+  Calculator,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -31,6 +32,7 @@ const desktopNav = [
   { href: "/analytics", label: "Analyse", icon: BarChart3 },
   { href: "/goals", label: "Ziele", icon: Target },
   { href: "/reviews", label: "Reviews", icon: BookOpen },
+  { href: "/rechner", label: "Rechner", icon: Calculator },
   { href: "/news",    label: "News",    icon: Newspaper },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
