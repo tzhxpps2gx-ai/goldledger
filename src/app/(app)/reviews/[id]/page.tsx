@@ -50,7 +50,7 @@ export default async function ReviewDetailPage({ params }: { params: { id: strin
   const r = review as Review;
 
   const userPreferences = await getUserPreferences();
-  const { data: accounts } = await supabase.from("accounts").select("id, currency").eq("is_active", true);
+  const { data: accounts } = await supabase.from("accounts").select("id, currency").eq("is_archived", false);
   const account = accounts?.find((a) => a.id === userPreferences.active_account_id) ?? accounts?.[0];
 
   let trades: ReviewTrade[] = [];
@@ -59,12 +59,31 @@ export default async function ReviewDetailPage({ params }: { params: { id: strin
   if (account) {
     const { data } = await supabase
       .from("trades")
-      .select("id, symbol, direction, pnl_currency, r_multiple, entry_time, exit_time, status")
+      .select("id, symbol, direction, pnl_currency, r_multiple, entry_time, exit_time, status, checklist_used")
       .eq("account_id", account.id)
       .gte("exit_time", r.period_start + "T00:00:00")
       .lte("exit_time", r.period_end + "T23:59:59")
       .eq("status", "closed");
     trades = (data ?? []) as ReviewTrade[];
+  }
+
+  // Disziplin-Score für den Zeitraum berechnen
+  const eligibleIds = trades.filter((t) => t.checklist_used).map((t) => t.id);
+  let disciplineScore: number | null = null;
+  let disciplineTradeCount = 0;
+  if (eligibleIds.length > 0) {
+    const [{ count: itemsCount }, { count: checkedCount }] = await Promise.all([
+      supabase.from("checklist_items").select("*", { count: "exact", head: true }),
+      supabase.from("trade_checklist_completions")
+        .select("*", { count: "exact", head: true })
+        .in("trade_id", eligibleIds)
+        .eq("is_checked", true),
+    ]);
+    const total = (itemsCount ?? 0) * eligibleIds.length;
+    if (total > 0) {
+      disciplineScore = Math.round(((checkedCount ?? 0) / total) * 100);
+      disciplineTradeCount = eligibleIds.length;
+    }
   }
 
   if (r.status === "draft") {
@@ -80,6 +99,8 @@ export default async function ReviewDetailPage({ params }: { params: { id: strin
         stats={stats}
         trades={trades}
         currency={currency}
+        disciplineScore={disciplineScore}
+        disciplineTradeCount={disciplineTradeCount}
       />
     );
   }
@@ -150,6 +171,17 @@ export default async function ReviewDetailPage({ params }: { params: { id: strin
               <div className="text-lg font-bold text-white">{stats.avgRMultiple.toFixed(2)}R</div>
             </div>
           )}
+          {disciplineScore != null && (
+            <div>
+              <div className="text-[10px] text-zinc-500">Disziplin</div>
+              <div className={cn(
+                "text-lg font-bold",
+                disciplineScore >= 80 ? "text-success" : disciplineScore >= 50 ? "text-gold-400" : "text-danger"
+              )}>
+                {disciplineScore} %
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -187,3 +219,4 @@ export default async function ReviewDetailPage({ params }: { params: { id: strin
     </div>
   );
 }
+
