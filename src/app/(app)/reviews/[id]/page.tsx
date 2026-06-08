@@ -59,28 +59,12 @@ export default async function ReviewDetailPage({ params }: { params: { id: strin
   if (account) {
     const { data } = await supabase
       .from("trades")
-      .select("id, symbol, direction, pnl_currency, r_multiple, entry_time, exit_time, status, checklist_used")
+      .select("id, symbol, direction, pnl_currency, r_multiple, entry_time, exit_time, status")
       .eq("account_id", account.id)
       .gte("exit_time", r.period_start + "T00:00:00")
       .lte("exit_time", r.period_end + "T23:59:59")
       .eq("status", "closed");
     trades = (data ?? []) as ReviewTrade[];
-  }
-
-  // Disziplin-Score für den Zeitraum berechnen
-  const eligibleIds = trades.filter((t) => t.checklist_used).map((t) => t.id);
-  let disciplineScore: number | null = null;
-  let disciplineTradeCount = 0;
-  if (eligibleIds.length > 0) {
-    const { data: completions } = await supabase
-      .from("trade_checklist_completions")
-      .select("is_checked")
-      .in("trade_id", eligibleIds);
-    if (completions && completions.length > 0) {
-      const checkedCount = completions.filter((c) => c.is_checked).length;
-      disciplineScore = Math.round((checkedCount / completions.length) * 100);
-      disciplineTradeCount = eligibleIds.length;
-    }
   }
 
   if (r.status === "draft") {
@@ -96,8 +80,6 @@ export default async function ReviewDetailPage({ params }: { params: { id: strin
         stats={stats}
         trades={trades}
         currency={currency}
-        disciplineScore={disciplineScore}
-        disciplineTradeCount={disciplineTradeCount}
       />
     );
   }
@@ -168,17 +150,6 @@ export default async function ReviewDetailPage({ params }: { params: { id: strin
               <div className="text-lg font-bold text-white">{stats.avgRMultiple.toFixed(2)}R</div>
             </div>
           )}
-          {disciplineScore != null && (
-            <div>
-              <div className="text-[10px] text-zinc-500">Disziplin</div>
-              <div className={cn(
-                "text-lg font-bold",
-                disciplineScore >= 80 ? "text-success" : disciplineScore >= 50 ? "text-gold-400" : "text-danger"
-              )}>
-                {disciplineScore} %
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -216,5 +187,6 @@ export default async function ReviewDetailPage({ params }: { params: { id: strin
     </div>
   );
 }
+
 
 
