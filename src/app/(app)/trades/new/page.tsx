@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import TagChips from "@/components/TagChips";
 import ChecklistSection from "@/components/ChecklistSection";
 import NewsWarningModal from "@/components/NewsWarningModal";
+import TemplatePickerModal, { type TradeTemplate } from "@/components/TemplatePickerModal";
 import type { Tag } from "@/lib/tags";
 import type { ChecklistItem } from "@/lib/checklist";
 import type { NewsEvent } from "@/lib/news/forexFactoryFetcher";
@@ -30,6 +31,10 @@ export default function NewTradePage() {
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Templates
+  const [templates, setTemplates] = useState<TradeTemplate[]>([]);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
 
   // News Warning
   const [newsEvents, setNewsEvents] = useState<NewsEvent[]>([]);
@@ -64,10 +69,11 @@ export default function NewTradePage() {
       const to = new Date(now.getTime() + 4 * 60 * 60 * 1000).toISOString();
       const params = new URLSearchParams({ from: now.toISOString(), to, minImpact: "low" });
 
-      const [{ data: accs }, { data: tagsData }, { data: clItems }] = await Promise.all([
+      const [{ data: accs }, { data: tagsData }, { data: clItems }, { data: tmplData }] = await Promise.all([
         supabase.from("accounts").select("*").eq("is_archived", false),
         supabase.from("tags").select("id, name, category, color").order("category").order("name"),
         getChecklistItemsAction(),
+        supabase.from("trade_templates").select("*").order("created_at", { ascending: false }),
       ]);
       if (accs && accs.length > 0) {
         setAccounts(accs);
@@ -75,6 +81,7 @@ export default function NewTradePage() {
       }
       setAvailableTags((tagsData ?? []) as Tag[]);
       setChecklistItems((clItems ?? []) as ChecklistItem[]);
+      setTemplates((tmplData ?? []) as TradeTemplate[]);
 
       // News + User-Prefs laden
       const { data: { user } } = await supabase.auth.getUser();
@@ -99,6 +106,19 @@ export default function NewTradePage() {
 
   function update<K extends keyof typeof form>(key: K, value: typeof form[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function applyTemplate(t: TradeTemplate) {
+    setForm((f) => ({
+      ...f,
+      direction: (t.direction as "long" | "short") ?? f.direction,
+      setup: t.setup ?? f.setup,
+      reasoning: t.reasoning ?? f.reasoning,
+      planned_entry: t.planned_entry?.toString() ?? f.planned_entry,
+      planned_stop: t.planned_stop?.toString() ?? f.planned_stop,
+      planned_target: t.planned_target?.toString() ?? f.planned_target,
+      lot_size: t.lot_size?.toString() ?? f.lot_size,
+    }));
   }
 
   function handleChecklistChange(itemId: string, value: boolean) {
@@ -218,7 +238,6 @@ export default function NewTradePage() {
     e.preventDefault();
     if (loading) return;
 
-    // News-Warning prüfen (nur wenn currencies gesetzt)
     if (newsCurrencies.length > 0) {
       const st = getNewsStatus(newsEvents, newsCurrencies, newsMinImpact, new Date(), newsWarnMins);
       if (st.currentlyInWindow && st.windowEvents.length > 0) {
@@ -257,10 +276,23 @@ export default function NewTradePage() {
     <>
       <div className="max-w-2xl mx-auto space-y-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
-            Neuer Trade
-          </h1>
-          <p className="text-zinc-400 text-sm mt-1">XAUUSD &#183; in EUR</p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
+                Neuer Trade
+              </h1>
+              <p className="text-zinc-400 text-sm mt-1">XAUUSD &#183; in EUR</p>
+            </div>
+            {templates.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowTemplatePicker(true)}
+                className="shrink-0 px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-xs text-zinc-300 hover:border-gold-500/50 hover:text-gold-400 transition mt-1"
+              >
+                Template laden
+              </button>
+            )}
+          </div>
           {accounts.length > 0 && (() => {
             const acc = accounts.find((a: any) => a.id === form.account_id) ?? accounts[0];
             const TBADGE: Record<string, {label:string;cls:string}> = { live: { label: "LIVE", cls: "bg-success/15 text-success border-success/30" }, demo: { label: "DEMO", cls: "bg-blue-500/15 text-blue-400 border-blue-500/30" }, prop: { label: "PROP", cls: "bg-gold-500/15 text-gold-400 border-gold-500/30" } };
@@ -392,6 +424,14 @@ export default function NewTradePage() {
         onConfirm={handleModalConfirm}
         onCancel={handleModalCancel}
       />
+
+      {showTemplatePicker && (
+        <TemplatePickerModal
+          templates={templates}
+          onSelect={applyTemplate}
+          onClose={() => setShowTemplatePicker(false)}
+        />
+      )}
     </>
   );
 }
