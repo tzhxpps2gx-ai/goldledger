@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency, formatDateTime, pnlColor, cn } from "@/lib/utils";
 import { ArrowLeft, Pencil } from "lucide-react";
+import StarRating from "@/components/StarRating";
 import DeleteTradeButton from "@/components/DeleteTradeButton";
 import TradeChartLive from "@/components/TradeChartLive";
 import TagChips from "@/components/TagChips";
@@ -263,6 +264,20 @@ export default async function TradeDetailPage({
             Notizen
           </h3>
           <p className="text-sm text-zinc-300 whitespace-pre-wrap">{trade.notes}</p>
+        </div>
+      )}
+
+      {trade.quality_score != null && (
+        <div className="bg-bg-card border border-bg-border rounded-2xl p-5 md:p-6">
+          <h3 className="text-xs font-semibold text-gold-400 uppercase tracking-wider mb-3">
+            Ausf&#252;hrungsqualit&#228;t
+          </h3>
+          <div className="flex items-center gap-4">
+            <StarRating value={trade.quality_score as number} readOnly size="lg" />
+            <span className="text-sm text-zinc-400">
+              {["", "Schlecht", "Schwach", "OK", "Gut", "Perfekt"][trade.quality_score as number]}
+            </span>
+          </div>
         </div>
       )}
     </div>
