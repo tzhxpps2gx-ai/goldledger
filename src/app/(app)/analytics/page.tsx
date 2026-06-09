@@ -317,14 +317,16 @@ export default async function AnalyticsPage() {
           </div>
           <div className="bg-bg-card border border-bg-border rounded-2xl overflow-hidden">
             <div className="grid grid-cols-4 px-4 py-2 border-b border-bg-border text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
-              <span>Bewertung</span>
+              <span className="text-center">Bewertung</span>
               <span className="text-center">Trades</span>
               <span className="text-center">Win Rate</span>
               <span className="text-right">&#216; P/L</span>
             </div>
             {qualityStats.map((s) => (
               <div key={s.score} className="grid grid-cols-4 items-center px-4 py-3 border-b border-bg-border/50 last:border-0">
-                <StarRating value={s.score} readOnly size="sm" />
+                <div className="flex justify-center">
+                  <StarRating value={s.score} readOnly size="sm" />
+                </div>
                 <span className="text-sm text-white text-center">{s.count}</span>
                 <span className="text-sm text-white text-center">{Math.round(s.winRate)} %</span>
                 <span className={cn("text-sm font-semibold text-right", s.avgPnl >= 0 ? "text-success" : "text-danger")}>
