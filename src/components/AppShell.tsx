@@ -32,8 +32,8 @@ const desktopNav = [
   { href: "/analytics", label: "Analyse", icon: BarChart3 },
   { href: "/goals", label: "Ziele", icon: Target },
   { href: "/reviews", label: "Reviews", icon: BookOpen },
-  { href: "/rechner", label: "Rechner", icon: Calculator },
   { href: "/news",    label: "News",    icon: Newspaper },
+  { href: "/rechner", label: "Rechner", icon: Calculator },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
