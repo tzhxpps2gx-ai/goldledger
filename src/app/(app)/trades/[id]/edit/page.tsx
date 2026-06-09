@@ -17,6 +17,7 @@ import type { ChecklistItem } from "@/lib/checklist";
 import { saveTradeTagsAction } from "@/app/actions/trade-tags";
 import { getChecklistItemsAction, saveTradeChecklistAction } from "@/app/actions/checklist";
 import { BookTemplate, ChevronDown, ChevronUp } from "lucide-react";
+import StarRating from "@/components/StarRating";
 
 export default function EditTradePage() {
   const router = useRouter();
@@ -33,6 +34,8 @@ export default function EditTradePage() {
   const [loading, setLoading] = useState(false);
   const [loadingTrade, setLoadingTrade] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [qualityScore, setQualityScore] = useState<number | null>(null);
 
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [templateName, setTemplateName] = useState("");
@@ -71,6 +74,7 @@ export default function EditTradePage() {
 
       if (trade) {
         setOriginalTrade(trade);
+        setQualityScore(trade.quality_score ?? null);
         setForm({
           account_id: trade.account_id ?? "",
           direction: (trade.direction as "long" | "short") ?? "long",
@@ -209,6 +213,7 @@ export default function EditTradePage() {
         exchange_rate: exchangeRate,
         status: form.status,
         notes: form.notes || null,
+        quality_score: qualityScore,
       })
       .eq("id", tradeId);
 
@@ -356,6 +361,17 @@ export default function EditTradePage() {
           <div>
             <Label>Notizen</Label>
             <textarea value={form.notes} onChange={(e) => update("notes", e.target.value)} rows={3} className={inputCls} />
+          </div>
+          <div>
+            <Label>Ausführungsqualität</Label>
+            <div className="mt-2">
+              <StarRating value={qualityScore} onChange={setQualityScore} size="lg" />
+              {qualityScore !== null && (
+                <p className="text-[11px] text-zinc-500 mt-1.5">
+                  {["", "Schlecht — Fehler gemacht", "Schwach — Verbesserungsbedarf", "OK — Plan eingehalten", "Gut — Sauber ausgeführt", "Perfekt — Ideale Ausführung"][qualityScore]}
+                </p>
+              )}
+            </div>
           </div>
         </div>
 
