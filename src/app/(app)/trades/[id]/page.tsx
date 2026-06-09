@@ -272,7 +272,7 @@ export default async function TradeDetailPage({
           <h3 className="text-xs font-semibold text-gold-400 uppercase tracking-wider mb-3">
             Ausf&#252;hrungsqualit&#228;t
           </h3>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center justify-center gap-4">
             <StarRating value={trade.quality_score as number} readOnly size="lg" />
             <span className="text-sm text-zinc-400">
               {["", "Schlecht", "Schwach", "OK", "Gut", "Perfekt"][trade.quality_score as number]}
