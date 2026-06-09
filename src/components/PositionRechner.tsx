@@ -7,28 +7,23 @@ type Instrument = {
   label: string;
   symbol: string;
   contractSize: number;
-  quoteCurrency: string;
   pricePrecision: number;
   placeholder: string;
 };
 
 const INSTRUMENTS: Instrument[] = [
-  { label: "Gold (XAUUSD)",     symbol: "XAUUSD",  contractSize: 100,    quoteCurrency: "USD", pricePrecision: 2, placeholder: "2350.00" },
-  { label: "EUR/USD",           symbol: "EURUSD",  contractSize: 100000, quoteCurrency: "USD", pricePrecision: 5, placeholder: "1.08500" },
-  { label: "GBP/USD",           symbol: "GBPUSD",  contractSize: 100000, quoteCurrency: "USD", pricePrecision: 5, placeholder: "1.27000" },
-  { label: "AUD/USD",           symbol: "AUDUSD",  contractSize: 100000, quoteCurrency: "USD", pricePrecision: 5, placeholder: "0.65000" },
-  { label: "NZD/USD",           symbol: "NZDUSD",  contractSize: 100000, quoteCurrency: "USD", pricePrecision: 5, placeholder: "0.60000" },
-  { label: "USD/JPY",           symbol: "USDJPY",  contractSize: 100000, quoteCurrency: "JPY", pricePrecision: 3, placeholder: "150.000" },
-  { label: "EUR/JPY",           symbol: "EURJPY",  contractSize: 100000, quoteCurrency: "JPY", pricePrecision: 3, placeholder: "162.000" },
-  { label: "GBP/JPY",           symbol: "GBPJPY",  contractSize: 100000, quoteCurrency: "JPY", pricePrecision: 3, placeholder: "190.000" },
-  { label: "USD/CHF",           symbol: "USDCHF",  contractSize: 100000, quoteCurrency: "CHF", pricePrecision: 5, placeholder: "0.90000" },
-  { label: "USD/CAD",           symbol: "USDCAD",  contractSize: 100000, quoteCurrency: "CAD", pricePrecision: 5, placeholder: "1.36000" },
-  { label: "Silber (XAGUSD)",   symbol: "XAGUSD",  contractSize: 5000,   quoteCurrency: "USD", pricePrecision: 3, placeholder: "27.500"  },
-  { label: "Öl WTI (XTIUSD)",   symbol: "XTIUSD",  contractSize: 1000,   quoteCurrency: "USD", pricePrecision: 2, placeholder: "78.50"   },
-  { label: "Sonstige / Custom", symbol: "CUSTOM",  contractSize: 0,      quoteCurrency: "USD", pricePrecision: 5, placeholder: ""        },
+  { label: "Gold (XAUUSD)",     symbol: "XAUUSD",  contractSize: 100,    pricePrecision: 2, placeholder: "2350.00" },
+  { label: "EUR/USD",           symbol: "EURUSD",  contractSize: 100000, pricePrecision: 5, placeholder: "1.08500" },
+  { label: "GBP/USD",          symbol: "GBPUSD",  contractSize: 100000, pricePrecision: 5, placeholder: "1.27000" },
+  { label: "AUD/USD",          symbol: "AUDUSD",  contractSize: 100000, pricePrecision: 5, placeholder: "0.65000" },
+  { label: "NZD/USD",          symbol: "NZDUSD",  contractSize: 100000, pricePrecision: 5, placeholder: "0.60000" },
+  { label: "USD/CHF",          symbol: "USDCHF",  contractSize: 100000, pricePrecision: 5, placeholder: "0.90000" },
+  { label: "Silber (XAGUSD)",  symbol: "XAGUSD",  contractSize: 5000,   pricePrecision: 3, placeholder: "27.500"  },
+  { label: "Öl WTI (XTIUSD)", symbol: "XTIUSD",  contractSize: 1000,   pricePrecision: 2, placeholder: "78.50"   },
+  { label: "Sonstige / Custom",symbol: "CUSTOM",  contractSize: 0,      pricePrecision: 5, placeholder: ""        },
 ];
 
-const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "JPY", "CAD", "AUD"];
+const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "AUD", "CAD", "JPY"];
 
 type Props = {
   autoBalance: number | null;
@@ -36,26 +31,21 @@ type Props = {
 };
 
 export default function PositionRechner({ autoBalance, autoCurrency }: Props) {
-  const [useAuto, setUseAuto]         = useState(autoBalance !== null);
+  const [useAuto, setUseAuto]           = useState(autoBalance !== null);
   const [manualBalance, setManualBalance] = useState("");
   const [manualCurrency, setManualCurrency] = useState(autoCurrency ?? "EUR");
-  const [riskPct, setRiskPct]         = useState(1);
-  const [instrIdx, setInstrIdx]       = useState(0);
-  const [entryStr, setEntryStr]       = useState("");
-  const [stopStr, setStopStr]         = useState("");
-  const [rateStr, setRateStr]         = useState("");
-  const [customSize, setCustomSize]   = useState("");
-  const [customQuote, setCustomQuote] = useState("USD");
+  const [riskPct, setRiskPct]           = useState(1);
+  const [instrIdx, setInstrIdx]         = useState(0);
+  const [entryStr, setEntryStr]         = useState("");
+  const [stopStr, setStopStr]           = useState("");
+  const [customSize, setCustomSize]     = useState("");
 
   const instr        = INSTRUMENTS[instrIdx];
   const isCustom     = instr.symbol === "CUSTOM";
   const contractSize = isCustom ? (parseFloat(customSize) || 0) : instr.contractSize;
-  const quoteCurrency = isCustom ? customQuote : instr.quoteCurrency;
   const accountCurrency = useAuto ? (autoCurrency ?? "EUR") : manualCurrency;
-  const needsRate    = quoteCurrency !== accountCurrency;
-
-  const balance = useAuto ? (autoBalance ?? 0) : (parseFloat(manualBalance) || 0);
-  const riskAmount = balance > 0 ? balance * (riskPct / 100) : null;
+  const balance      = useAuto ? (autoBalance ?? 0) : (parseFloat(manualBalance) || 0);
+  const riskAmount   = balance > 0 ? balance * (riskPct / 100) : null;
 
   const lotResult = useMemo(() => {
     if (balance <= 0 || contractSize <= 0) return null;
@@ -63,18 +53,11 @@ export default function PositionRechner({ autoBalance, autoCurrency }: Props) {
     const stop  = parseFloat(stopStr);
     if (isNaN(entry) || isNaN(stop) || entry === stop) return null;
 
-    const stopDist = Math.abs(entry - stop);
-    const rAmt = balance * (riskPct / 100);
-    const riskPerLotQuote = stopDist * contractSize;
-
-    if (needsRate) {
-      const rate = parseFloat(rateStr);
-      if (isNaN(rate) || rate <= 0) return { lots: null as null, stopDist };
-      return { lots: rAmt / (riskPerLotQuote * rate), stopDist };
-    }
-
-    return { lots: rAmt / riskPerLotQuote, stopDist };
-  }, [balance, riskPct, entryStr, stopStr, contractSize, needsRate, rateStr]);
+    const stopDist    = Math.abs(entry - stop);
+    const rAmt        = balance * (riskPct / 100);
+    const riskPerLot  = stopDist * contractSize;
+    return { lots: rAmt / riskPerLot, stopDist };
+  }, [balance, riskPct, entryStr, stopStr, contractSize]);
 
   function floorLots(l: number) {
     return Math.floor(l * 100) / 100;
@@ -88,14 +71,6 @@ export default function PositionRechner({ autoBalance, autoCurrency }: Props) {
     }
   }
 
-  function handleInstrChange(idx: number) {
-    setInstrIdx(idx);
-    setEntryStr("");
-    setStopStr("");
-    setRateStr("");
-  }
-
-  const showResult = lotResult !== null;
   const lotsFloored = lotResult?.lots != null ? floorLots(lotResult.lots) : null;
 
   return (
@@ -148,24 +123,36 @@ export default function PositionRechner({ autoBalance, autoCurrency }: Props) {
             </select>
           </div>
         )}
+      </div>
 
-        {/* Risiko-Slider */}
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-xs text-zinc-400">Risiko</span>
-            <span className="text-xs font-bold text-gold-400">
-              {riskPct.toFixed(1)} %
-              {riskAmount !== null && " = " + fmt(riskAmount, accountCurrency)}
+      {/* ── Risiko ── */}
+      <div className="bg-bg-card border border-bg-border rounded-2xl p-5 space-y-4">
+        <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Risiko</div>
+
+        {/* Big risk display */}
+        <div className="rounded-xl bg-gold-500/8 border border-gold-500/20 px-5 py-4 flex items-center justify-between gap-4">
+          <span className="text-5xl font-black text-gold-400 leading-none tabular-nums">
+            {riskPct.toFixed(1)}<span className="text-2xl font-bold ml-1 text-gold-400/70">%</span>
+          </span>
+          {riskAmount !== null ? (
+            <span className="text-2xl font-bold text-white tabular-nums">
+              {fmt(riskAmount, accountCurrency)}
             </span>
-          </div>
+          ) : (
+            <span className="text-lg text-zinc-600">Kontostand eingeben</span>
+          )}
+        </div>
+
+        {/* Slider */}
+        <div>
           <input
             type="range"
             min="0.1" max="5" step="0.1"
             value={riskPct}
             onChange={(e) => setRiskPct(parseFloat(e.target.value))}
-            className="w-full accent-gold-500 h-1.5 rounded"
+            className="w-full accent-gold-500 h-2 rounded cursor-pointer"
           />
-          <div className="flex justify-between text-[10px] text-zinc-600 mt-1">
+          <div className="flex justify-between text-[10px] text-zinc-600 mt-1.5">
             <span>0.1 %</span><span>5 %</span>
           </div>
         </div>
@@ -179,7 +166,7 @@ export default function PositionRechner({ autoBalance, autoCurrency }: Props) {
           <label className="text-xs text-zinc-400 mb-1.5 block">Instrument</label>
           <select
             value={instrIdx}
-            onChange={(e) => handleInstrChange(parseInt(e.target.value))}
+            onChange={(e) => { setInstrIdx(parseInt(e.target.value)); setEntryStr(""); setStopStr(""); }}
             className="w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-gold-500/50"
           >
             {INSTRUMENTS.map((inst, i) => (
@@ -189,27 +176,15 @@ export default function PositionRechner({ autoBalance, autoCurrency }: Props) {
         </div>
 
         {isCustom && (
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-zinc-400 mb-1.5 block">Kontraktgröße pro Lot</label>
-              <input
-                type="number"
-                value={customSize}
-                onChange={(e) => setCustomSize(e.target.value)}
-                placeholder="100000"
-                className="w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-gold-500/50"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-zinc-400 mb-1.5 block">Kurswährung</label>
-              <select
-                value={customQuote}
-                onChange={(e) => setCustomQuote(e.target.value)}
-                className="w-full bg-bg-elevated border border-bg-border rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-gold-500/50"
-              >
-                {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
+          <div>
+            <label className="text-xs text-zinc-400 mb-1.5 block">Kontraktgröße pro Lot</label>
+            <input
+              type="number"
+              value={customSize}
+              onChange={(e) => setCustomSize(e.target.value)}
+              placeholder="z.B. 100000 für Forex-Majors, 100 für Gold"
+              className="w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-gold-500/50"
+            />
           </div>
         )}
 
@@ -246,29 +221,10 @@ export default function PositionRechner({ autoBalance, autoCurrency }: Props) {
             </span>
           </p>
         )}
-
-        {needsRate && (
-          <div>
-            <label className="text-xs text-zinc-400 mb-1.5 block">
-              {"1 " + quoteCurrency + " = ? " + accountCurrency}
-            </label>
-            <input
-              type="number"
-              step="any"
-              value={rateStr}
-              onChange={(e) => setRateStr(e.target.value)}
-              placeholder={quoteCurrency === "JPY" ? "0.0062" : "0.926"}
-              className="w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-gold-500/50"
-            />
-            <p className="text-[10px] text-zinc-600 mt-1">
-              Aktuellen Kurs aus deiner Handelsplattform ablesen
-            </p>
-          </div>
-        )}
       </div>
 
       {/* ── Ergebnis ── */}
-      {showResult && (
+      {lotResult !== null && (
         <div className="bg-bg-card border border-gold-500/20 rounded-2xl p-5">
           <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-4">Ergebnis</div>
           <div className="grid grid-cols-2 gap-6">
@@ -280,7 +236,7 @@ export default function PositionRechner({ autoBalance, autoCurrency }: Props) {
             </div>
             <div>
               <div className="text-[10px] text-zinc-500 mb-1">Lot-Größe</div>
-              <div className={cn("text-2xl font-bold", lotsFloored !== null ? "text-gold-400" : "text-zinc-600")}>
+              <div className="text-2xl font-bold text-gold-400">
                 {lotsFloored !== null ? lotsFloored.toFixed(2) : "—"}
               </div>
             </div>
@@ -291,7 +247,7 @@ export default function PositionRechner({ autoBalance, autoCurrency }: Props) {
               <div>
                 <div className="text-[10px] text-zinc-500 mb-0.5">Exakter Wert</div>
                 <div className="text-sm font-semibold text-zinc-300">
-                  {lotResult!.lots!.toFixed(4)}
+                  {lotResult.lots.toFixed(4)}
                 </div>
               </div>
               <div>
@@ -308,16 +264,10 @@ export default function PositionRechner({ autoBalance, autoCurrency }: Props) {
               </div>
             </div>
           )}
-
-          {lotResult?.lots === null && needsRate && (
-            <p className="text-xs text-zinc-500 mt-3">
-              Wechselkurs eingeben um die Lot-Größe zu berechnen
-            </p>
-          )}
         </div>
       )}
 
-      {!showResult && balance > 0 && (
+      {lotResult === null && balance > 0 && (
         <p className="text-center py-4 text-zinc-600 text-sm">
           Entry und Stop eingeben um die Lot-Größe zu berechnen
         </p>
