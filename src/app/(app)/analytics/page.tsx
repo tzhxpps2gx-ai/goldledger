@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { formatCurrency, cn } from "@/lib/utils";
+import StarRating from "@/components/StarRating";
 import TagPerformanceClient from "@/components/TagPerformanceClient";
 import AnalyticsInsights from "@/components/AnalyticsInsights";
 import HourlyHeatmap from "@/components/HourlyHeatmap";
@@ -36,7 +38,7 @@ export default async function AnalyticsPage() {
 
   const { data: trades } = await supabase
     .from("trades")
-    .select("id, symbol, direction, pnl_currency, r_multiple, entry_time, exit_time, setup, checklist_used, imported_at, traded_against_news")
+    .select("id, symbol, direction, pnl_currency, r_multiple, entry_time, exit_time, setup, checklist_used, imported_at, traded_against_news, quality_score")
     .eq("account_id", account.id)
     .eq("status", "closed");
 
@@ -222,6 +224,20 @@ export default async function AnalyticsPage() {
     currency: account.currency as string,
   };
 
+  // Ausführungsqualität
+  const qualityStats = [1, 2, 3, 4, 5].map((score) => {
+    const group = closedTrades.filter((t) => (t as any).quality_score === score);
+    const count = group.length;
+    const totalPnl = group.reduce((s, t) => s + ((t.pnl_currency as number) ?? 0), 0);
+    const wins = group.filter((t) => ((t.pnl_currency as number) ?? 0) > 0).length;
+    return {
+      score,
+      count,
+      avgPnl: count > 0 ? totalPnl / count : 0,
+      winRate: count > 0 ? (wins / count) * 100 : 0,
+    };
+  }).filter((s) => s.count > 0);
+
   return (
     <div className="max-w-2xl mx-auto space-y-8">
       <div>
@@ -287,6 +303,38 @@ export default async function AnalyticsPage() {
         </div>
         <NewsTradeComparisonClient data={newsComparisonData} />
       </div>
+
+      {/* Ausführungsqualität */}
+      {qualityStats.length > 0 && (
+        <div className="space-y-3">
+          <div>
+            <h2 className="text-xs font-semibold text-gold-400 uppercase tracking-wider mb-1">
+              Ausf&#252;hrungsqualit&#228;t
+            </h2>
+            <p className="text-xs text-zinc-500">
+              Wie gut bewertest du deine Ausf&#252;hrung — und was bringt es?
+            </p>
+          </div>
+          <div className="bg-bg-card border border-bg-border rounded-2xl overflow-hidden">
+            <div className="grid grid-cols-4 px-4 py-2 border-b border-bg-border text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
+              <span>Bewertung</span>
+              <span className="text-center">Trades</span>
+              <span className="text-center">Win Rate</span>
+              <span className="text-right">&#216; P/L</span>
+            </div>
+            {qualityStats.map((s) => (
+              <div key={s.score} className="grid grid-cols-4 items-center px-4 py-3 border-b border-bg-border/50 last:border-0">
+                <StarRating value={s.score} readOnly size="sm" />
+                <span className="text-sm text-white text-center">{s.count}</span>
+                <span className="text-sm text-white text-center">{Math.round(s.winRate)} %</span>
+                <span className={cn("text-sm font-semibold text-right", s.avgPnl >= 0 ? "text-success" : "text-danger")}>
+                  {s.avgPnl >= 0 ? "+" : ""}{formatCurrency(s.avgPnl, account.currency as string)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Konto-Vergleich */}
       <div className="space-y-3">
