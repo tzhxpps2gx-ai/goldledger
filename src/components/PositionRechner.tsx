@@ -147,13 +147,13 @@ export default function PositionRechner({ autoBalance, autoCurrency }: Props) {
         <div>
           <input
             type="range"
-            min="0.1" max="5" step="0.1"
+            min="0.1" max="30" step="0.1"
             value={riskPct}
             onChange={(e) => setRiskPct(parseFloat(e.target.value))}
             className="w-full accent-gold-500 h-2 rounded cursor-pointer"
           />
           <div className="flex justify-between text-[10px] text-zinc-600 mt-1.5">
-            <span>0.1 %</span><span>5 %</span>
+            <span>0.1 %</span><span>30 %</span>
           </div>
         </div>
       </div>
